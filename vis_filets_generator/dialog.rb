@@ -35,31 +35,31 @@ module VisFiletsGenerator
              border-radius:3px;cursor:pointer;font-size:13px;font-weight:bold;margin-top:2px}
         #btn:hover{background:#0052a3}
         .err{color:#c00;font-size:11px;margin-top:4px;min-height:14px}
+        .radio-row{margin:4px 0}
+        .sub-row{margin:2px 0 2px 16px}
       </style>
       </head>
       <body>
 
       <div class="card">
-        <h3>Type de filet</h3>
-        <div class="row">
-          <div class="lbl">Profil</div>
-          <select id="profile_type" onchange="onProfileChange()">
-            <option value="iso">ISO metrique</option>
-            <option value="plastic">Optimise plastique FDM</option>
-          </select>
+        <h3>Thread type</h3>
+        <div class="radio-row">
+          <label><input type="radio" name="profile_type" value="iso" checked onclick="onProfileChange()"> ISO metric</label>
+          &nbsp;&nbsp;&nbsp;
+          <label><input type="radio" name="profile_type" value="plastic" onclick="onProfileChange()"> FDM plastic optimised</label>
         </div>
       </div>
 
       <div class="card">
         <h3>Dimensions</h3>
         <div class="row" id="iso_preset_row">
-          <div class="lbl">Taille M</div>
+          <div class="lbl">M size</div>
           <select id="m_size" onchange="onMSize()">
             <option value="M3">M3</option><option value="M4">M4</option>
             <option value="M5">M5</option><option value="M6">M6</option>
             <option value="M8">M8</option><option value="M10" selected>M10</option>
             <option value="M12">M12</option><option value="M16">M16</option>
-            <option value="M20">M20</option><option value="custom">Personnalise</option>
+            <option value="M20">M20</option><option value="custom">Custom</option>
           </select>
         </div>
         <div class="row">
@@ -67,20 +67,28 @@ module VisFiletsGenerator
           <input type="number" id="d" value="10" min="1" step="0.1" onchange="onDChange()">
         </div>
         <div class="row">
-          <div class="lbl">Pas P (mm)</div>
+          <div class="lbl">Pitch P (mm)</div>
           <input type="number" id="pitch" value="1.5" min="0.1" step="0.01">
-        </div>
-        <div class="row">
-          <div class="lbl">Hauteur (mm)</div>
-          <input type="number" id="length" value="50" min="0.1" step="1">
         </div>
         <div class="hint" id="eng_hint"></div>
       </div>
 
       <div class="card">
-        <h3>Pieces a creer</h3>
-        <div class="check-row"><label><input type="checkbox" id="create_tige" checked> Tige filetee &nbsp;(&#216; D)</label></div>
-        <div class="check-row"><label><input type="checkbox" id="create_ecrou"> Ecrou hexagonal &nbsp;(alesage D + gap)</label></div>
+        <h3>Parts to create</h3>
+        <div class="check-row">
+          <label><input type="checkbox" id="create_tige" checked onchange="onCreateChange()"> Threaded rod &nbsp;(&#216; D)</label>
+        </div>
+        <div class="row sub-row" id="row_length_tige">
+          <div class="lbl">Rod height (mm)</div>
+          <input type="number" id="length_tige" value="50" min="0.1" step="1">
+        </div>
+        <div class="check-row" style="margin-top:6px">
+          <label><input type="checkbox" id="create_ecrou" onchange="onCreateChange()"> Hex nut &nbsp;(bore D + gap)</label>
+        </div>
+        <div class="row sub-row" id="row_length_ecrou" style="display:none">
+          <div class="lbl">Nut height (mm)</div>
+          <input type="number" id="length_ecrou" value="8" min="0.1" step="1">
+        </div>
       </div>
 
       <div class="card">
@@ -89,15 +97,15 @@ module VisFiletsGenerator
           <div class="lbl">Gap (mm)</div>
           <input type="number" id="gap" value="0.3" min="0" step="0.05">
         </div>
-        <div class="check-row"><label><input type="checkbox" id="chamfer"> Chanfrein aux extremites</label></div>
+        <div class="check-row"><label><input type="checkbox" id="chamfer"> Thread lead-in chamfer</label></div>
         <div class="row" id="max_angle_row" style="display:none">
-          <div class="lbl">Angle / verticale (°)</div>
+          <div class="lbl">Max overhang angle (°)</div>
           <input type="number" id="max_overhang_angle" value="60" min="10" max="85" step="5"
                  onchange="updateAngleHint()">
           <span class="adj" id="angle_hint"></span>
         </div>
         <div class="row">
-          <div class="lbl">Segments / tour</div>
+          <div class="lbl">Segments / turn</div>
           <input type="number" id="n_theta" value="24" min="6" max="120" step="6" onchange="onNTheta()">
           <span class="adj" id="nth_hint"></span>
         </div>
@@ -111,45 +119,59 @@ module VisFiletsGenerator
                M8:{d:8,p:1.25},M10:{d:10,p:1.5},M12:{d:12,p:1.75},
                M16:{d:16,p:2.0},M20:{d:20,p:2.5}};
 
-      // Valeurs sauvegardees injectees par Ruby (placeholder remplace au chargement)
       var SAVED = __SAVED_JSON__;
 
       function g(id){return document.getElementById(id);}
       function fv(id){return parseFloat(g(id).value)||0;}
       function iv(id){return parseInt(g(id).value)||0;}
 
-      // Restaure les parametres sauvegardes sans declencher les handlers de cascade
+      function getProfileType(){
+        var radios=document.getElementsByName('profile_type');
+        for(var i=0;i<radios.length;i++){if(radios[i].checked)return radios[i].value;}
+        return 'iso';
+      }
+
+      function onCreateChange(){
+        g('row_length_tige').style.display=g('create_tige').checked?'flex':'none';
+        g('row_length_ecrou').style.display=g('create_ecrou').checked?'flex':'none';
+      }
+
       function initForm(s){
         if(!s) return;
-        if(s.profile_type!==undefined) g('profile_type').value=s.profile_type;
-        var isPlastic=(g('profile_type').value==='plastic');
+        if(s.profile_type!==undefined){
+          var radios=document.getElementsByName('profile_type');
+          for(var i=0;i<radios.length;i++) radios[i].checked=(radios[i].value===s.profile_type);
+        }
+        var isPlastic=(getProfileType()==='plastic');
         g('iso_preset_row').style.display=isPlastic?'none':'flex';
         g('max_angle_row').style.display=isPlastic?'flex':'none';
-        if(s.m_size!==undefined)       g('m_size').value=s.m_size;
-        if(s.d!==undefined)            g('d').value=s.d;
-        if(s.pitch!==undefined)        g('pitch').value=s.pitch;
-        if(s.length!==undefined)       g('length').value=s.length;
-        if(s.create_tige!==undefined)  g('create_tige').checked=s.create_tige;
-        if(s.create_ecrou!==undefined) g('create_ecrou').checked=s.create_ecrou;
-        if(s.gap!==undefined)          g('gap').value=s.gap;
+        if(s.m_size!==undefined)        g('m_size').value=s.m_size;
+        if(s.d!==undefined)             g('d').value=s.d;
+        if(s.pitch!==undefined)         g('pitch').value=s.pitch;
+        if(s.length_tige!==undefined)   g('length_tige').value=s.length_tige;
+        if(s.length_ecrou!==undefined)  g('length_ecrou').value=s.length_ecrou;
+        if(s.create_tige!==undefined)   g('create_tige').checked=s.create_tige;
+        if(s.create_ecrou!==undefined)  g('create_ecrou').checked=s.create_ecrou;
+        if(s.gap!==undefined)           g('gap').value=s.gap;
         if(s.chamfer!==undefined)             g('chamfer').checked=s.chamfer;
         if(s.n_theta!==undefined)             g('n_theta').value=s.n_theta;
         if(s.max_overhang_angle!==undefined)  g('max_overhang_angle').value=s.max_overhang_angle;
+        onCreateChange();
         updateHint();
         updateAngleHint();
       }
 
       function updateAngleHint(){
-        if(g('profile_type').value!=='plastic'){g('angle_hint').textContent='';return;}
+        if(getProfileType()!=='plastic'){g('angle_hint').textContent='';return;}
         var pitch=fv('pitch')||1.5;
         var angle=parseFloat(g('max_overhang_angle').value)||60;
         var rad=angle*Math.PI/180;
         var d=(pitch/2)*Math.tan(rad);
-        g('angle_hint').textContent='prof. '+d.toFixed(3)+' mm';
+        g('angle_hint').textContent='depth: '+d.toFixed(3)+' mm';
       }
 
       function onProfileChange(){
-        var t=g('profile_type').value;
+        var t=getProfileType();
         g('iso_preset_row').style.display=(t==='iso')?'flex':'none';
         g('max_angle_row').style.display=(t==='plastic')?'flex':'none';
         if(t==='plastic'){
@@ -174,7 +196,7 @@ module VisFiletsGenerator
       }
 
       function onDChange(){
-        if(g('profile_type').value==='plastic'){
+        if(getProfileType()==='plastic'){
           var d=fv('d')||10;
           g('pitch').value=(0.25*d).toFixed(2);
         } else {
@@ -185,7 +207,7 @@ module VisFiletsGenerator
 
       function updateHint(){
         var d=fv('d')||10;
-        g('eng_hint').textContent='Engagement recommande : >= '+(2*d).toFixed(0)+
+        g('eng_hint').textContent='Recommended engagement: >= '+(2*d).toFixed(0)+
           ' mm  (ideal '+(3*d).toFixed(0)+' – '+(4*d).toFixed(0)+' mm)';
       }
 
@@ -195,28 +217,31 @@ module VisFiletsGenerator
         if(adj<6)adj=6;
         if(adj>120)adj=120;
         g('n_theta').value=adj;
-        g('nth_hint').textContent=(adj!==n)?('(ajuste a '+adj+')'):' ';
+        g('nth_hint').textContent=(adj!==n)?('(adjusted to '+adj+')'):' ';
       }
 
       function doGenerate(){
         g('err').textContent='';
         onNTheta();
         var tige=g('create_tige').checked, ecrou=g('create_ecrou').checked;
-        if(!tige&&!ecrou){g('err').textContent='Cochez au moins une piece.';return;}
-        var d=fv('d'),pitch=fv('pitch'),len=fv('length'),gap=fv('gap'),nth=iv('n_theta');
-        if(d<=0){g('err').textContent='D invalide.';return;}
-        if(pitch<=0){g('err').textContent='Pas P invalide.';return;}
-        if(len<=0){g('err').textContent='Hauteur invalide.';return;}
-        if(gap<0){g('err').textContent='Gap invalide.';return;}
+        if(!tige&&!ecrou){g('err').textContent='Check at least one part.';return;}
+        var d=fv('d'),pitch=fv('pitch'),gap=fv('gap'),nth=iv('n_theta');
+        var lt=fv('length_tige'), le=fv('length_ecrou');
+        if(d<=0){g('err').textContent='Invalid D.';return;}
+        if(pitch<=0){g('err').textContent='Invalid pitch P.';return;}
+        if(tige&&lt<=0){g('err').textContent='Invalid rod height.';return;}
+        if(ecrou&&le<=0){g('err').textContent='Invalid nut height.';return;}
+        if(gap<0){g('err').textContent='Invalid gap.';return;}
         var p={
-          profile_type:g('profile_type').value,
+          profile_type:getProfileType(),
           m_size:g('m_size').value,
-          d:d, pitch:pitch, length:len,
+          d:d, pitch:pitch,
+          length_tige:lt, length_ecrou:le,
           create_tige:tige, create_ecrou:ecrou,
           gap:gap,
           chamfer:g('chamfer').checked,
           n_theta:nth,
-          max_overhang_angle:parseFloat(g('max_overhang_angle').value)||45
+          max_overhang_angle:parseFloat(g('max_overhang_angle').value)||60
         };
         var j=JSON.stringify(p);
         if(typeof sketchup!=='undefined'){
@@ -237,15 +262,16 @@ module VisFiletsGenerator
     # -------------------------------------------------------------------------
     def self.read_defaults
       {
-        'profile_type' => Sketchup.read_default(PREF_KEY, 'profile_type', 'iso'),
-        'm_size'       => Sketchup.read_default(PREF_KEY, 'm_size',       'M10'),
-        'd'            => Sketchup.read_default(PREF_KEY, 'd',            10.0).to_f,
-        'pitch'        => Sketchup.read_default(PREF_KEY, 'pitch',        1.5).to_f,
-        'length'       => Sketchup.read_default(PREF_KEY, 'length',       50.0).to_f,
-        'create_tige'  => Sketchup.read_default(PREF_KEY, 'create_tige',  true),
-        'create_ecrou' => Sketchup.read_default(PREF_KEY, 'create_ecrou', false),
-        'gap'          => Sketchup.read_default(PREF_KEY, 'gap',          0.3).to_f,
-        'chamfer'      => Sketchup.read_default(PREF_KEY, 'chamfer',      false),
+        'profile_type'       => Sketchup.read_default(PREF_KEY, 'profile_type',       'iso'),
+        'm_size'             => Sketchup.read_default(PREF_KEY, 'm_size',             'M10'),
+        'd'                  => Sketchup.read_default(PREF_KEY, 'd',                  10.0).to_f,
+        'pitch'              => Sketchup.read_default(PREF_KEY, 'pitch',              1.5).to_f,
+        'length_tige'        => Sketchup.read_default(PREF_KEY, 'length_tige',        50.0).to_f,
+        'length_ecrou'       => Sketchup.read_default(PREF_KEY, 'length_ecrou',       8.0).to_f,
+        'create_tige'        => Sketchup.read_default(PREF_KEY, 'create_tige',        true),
+        'create_ecrou'       => Sketchup.read_default(PREF_KEY, 'create_ecrou',       false),
+        'gap'                => Sketchup.read_default(PREF_KEY, 'gap',                0.3).to_f,
+        'chamfer'            => Sketchup.read_default(PREF_KEY, 'chamfer',            false),
         'n_theta'            => Sketchup.read_default(PREF_KEY, 'n_theta',            24).to_i,
         'max_overhang_angle' => Sketchup.read_default(PREF_KEY, 'max_overhang_angle', 60.0).to_f,
       }
@@ -271,7 +297,7 @@ module VisFiletsGenerator
         dialog_title:    DIALOG_TITLE,
         preferences_key: 'VFGDialog',
         width:  340,
-        height: 580,
+        height: 600,
         min_width:  300,
         min_height: 400,
         style: UI::HtmlDialog::STYLE_DIALOG
@@ -284,7 +310,7 @@ module VisFiletsGenerator
     end
 
     def self.show_web_dialog
-      dlg = UI::WebDialog.new(DIALOG_TITLE, false, 'VFGDialog', 340, 580, 100, 100, true)
+      dlg = UI::WebDialog.new(DIALOG_TITLE, false, 'VFGDialog', 340, 600, 100, 100, true)
       dlg.set_html(build_html(read_defaults))
       dlg.add_action_callback('generate') do |_dlg, encoded|
         begin

@@ -1,10 +1,108 @@
+# vis_filets_generator — SketchUp Plugin
+
+Parametric generator for **threaded rods** and **hex nuts** in SketchUp, optimised for FDM 3D printing. Compatible with SketchUp 2014 through the latest version.
+
+---
+
+## Why this plugin?
+
+Existing SketchUp thread plugins either require drawing the profile by hand or fail to produce usable solids. This plugin generates **watertight solids** ready for the slicer, in any SketchUp unit (mm, cm, m…).
+
+## Installation
+
+1. Download `build/vis_filets_generator.rbz`
+2. In SketchUp: **Window → Extension Manager → Install Extension**
+3. Select the `.rbz` file
+4. Restart SketchUp
+
+## Usage
+
+Menu **Extensions → Vis & Filets → Generate…**
+
+| # | Parameter | Description |
+|---|-----------|-------------|
+| 1 | **Thread type** | ISO metric (60°) or FDM plastic optimised (V-profile, angle-limited) |
+| 2 | **D** | Nominal diameter — M3–M20 dropdown (ISO) or free input |
+| 3 | **Pitch P** | Auto-filled from ISO table, always editable |
+| 4 | **Parts** | ☑ Threaded rod  ☑ Hex nut (combinable) |
+| 5 | **Rod height** | Length of the threaded rod |
+| 6 | **Nut height** | Height of the hex nut |
+| 7 | **Gap** | Radial clearance added to nut bore (default 0.3 mm ISO / 0.4 mm plastic) |
+| 8 | **Chamfer** | 45° thread lead-in chamfer on rod (top only) and nut (both faces) |
+| 9 | **Segments / turn** | Angular resolution, multiple of 6 (default 24) |
+| 10 | **Max overhang angle** | FDM plastic only — angle from vertical (default 60°) |
+
+> **Units**: all values are entered in the current SketchUp model unit. If the model is in metres, entering `10` generates a 10-metre diameter thread.
+
+## Thread profiles
+
+### ISO metric
+Standard 60° V-profile per ISO 261 / ISO 724. Vertices placed exactly at crests and roots — sharp edges, no mesh smoothing.
+
+### FDM plastic optimised
+V-profile with depth derived from the max overhang angle:
+`depth = (P/2) × tan(angle_from_vertical)`
+
+| Angle (from vertical) | Depth M10 (P=1.5mm) | From horizontal |
+|---|---|---|
+| 45° | 0.75 mm | 45° — universal limit |
+| 60° | 1.30 mm | 30° — standard printer |
+| 70° | 2.06 mm | 20° — good cooling |
+
+## Hex nut
+
+Generated as a single `PolygonMesh` with no booleans:
+- Hexagonal outer shape DIN 934 (M3–M20 table built-in)
+- Threaded bore: `r_bore = r_thread ± gap` (gap applied to radius)
+- Watertight solid guaranteed
+
+## Thread lead-in chamfer
+
+45° truncated cone, length = 1 pitch:
+- **Rod**: top face only. `min(r, cone_r)` — cone clips crests progressively, roots preserved until consumed.
+- **Nut**: both faces. `max(r, r_chamfer)` — exact mirror of rod chamfer, bore opens outward.
+
+## Technical notes
+
+### Adaptive scale trick
+SketchUp internal tolerance ≈ 0.001". For mm/cm threads, the plugin builds geometry at **100×** then applies `group.transform!(1/100)`. In metres, geometry is already large (SCALE = 1).
+
+### Compatibility
+- SketchUp 2014–2016: `UI::WebDialog`
+- SketchUp 2017+: `UI::HtmlDialog` (auto-detected)
+- Ruby 2.0+, no external dependencies
+
+## Known limitations
+
+- Right-hand thread only
+- No bolt head (DIN 933) — hex nut (DIN 934) only
+- FDM plastic profile: to be validated per material and printer
+
+## File structure
+
+```
+vis_filets_generator.rb        # Loader + extension registration
+vis_filets_generator/
+  main.rb                      # Menu entry point
+  presets.rb                   # ISO M3–M20 tables + FDM recommended pitches
+  profiles.rb                  # IsoProfile (60°), PlasticProfile (angle-limited V)
+  geometry.rb                  # PolygonMesh generation (rod + nut)
+  dialog.rb                    # UI (WebDialog / HtmlDialog)
+build/
+  vis_filets_generator.rbz     # Installable extension
+```
+
+---
+
+---
+
 # vis_filets_generator — Plugin SketchUp
 
-Générateur paramétrique de **tiges filetées** et **écrous hexagonaux** pour SketchUp, optimisé pour l'impression 3D FDM. Compatible SketchUp 2014 à la version la plus récente.
+Générateur paramétrique de **tiges filetées** et **écrous hexagonaux** pour SketchUp, optimisé pour l'impression 3D FDM. Compatible SketchUp 2014 jusqu'à la version la plus récente.
 
 ## Pourquoi ce plugin ?
 
-Les plugins de filets existants pour SketchUp exigent de dessiner le profil manuellement ou ne génèrent pas de solides exploitables. Ce plugin produit directement des **solides watertight** prêts pour le slicer, dans n'importe quelle unité SketchUp (mm, cm, m…).
+Les plugins de filets existants exigent de dessiner le profil manuellement ou ne génèrent pas de solides exploitables. Ce plugin produit des **solides watertight** prêts pour le slicer, dans n'importe quelle unité SketchUp.
 
 ## Installation
 
@@ -15,80 +113,39 @@ Les plugins de filets existants pour SketchUp exigent de dessiner le profil manu
 
 ## Utilisation
 
-Menu **Extensions → Vis & Filets → Générer…**
-
-Une boîte de dialogue s'ouvre avec les paramètres suivants :
+Menu **Extensions → Vis & Filets → Generate…**
 
 | # | Paramètre | Description |
 |---|-----------|-------------|
-| 1 | **Profil** | ISO métrique (60°) ou Optimisé plastique FDM (trapézoïdal 30°) |
+| 1 | **Type de filet** | ISO métrique (60°) ou Plastique FDM optimisé (profil V, angle limité) |
 | 2 | **D** | Diamètre nominal — dropdown M3–M20 (ISO) ou saisie libre |
 | 3 | **Pas P** | Auto-rempli depuis la table ISO, toujours éditable |
-| 4 | **Hauteur** | Longueur de la pièce, dans l'unité courante du modèle |
-| 5 | **Pièces** | ☑ Tige filetée  ☑ Écrou hexagonal (les deux cochables simultanément) |
-| 6 | **Gap** | Jeu radial ajouté à l'alésage de l'écrou (défaut 0,3 mm ISO / 0,4 mm plastique) |
-| 7 | **Chanfrein** | Chanfrein d'entrée 45° sur la tige (haut) et l'écrou (deux côtés) |
-| 8 | **Segments/tour** | Résolution angulaire, multiple de 6 (défaut 24) |
+| 4 | **Pièces** | ☑ Tige filetée  ☑ Écrou hexagonal (combinables) |
+| 5 | **Hauteur tige** | Longueur de la tige filetée |
+| 6 | **Hauteur écrou** | Hauteur de l'écrou hexagonal |
+| 7 | **Gap** | Jeu radial ajouté à l'alésage de l'écrou (défaut 0,3 mm ISO / 0,4 mm plastique) |
+| 8 | **Chanfrein** | Chanfrein d'entrée 45° sur la tige (haut) et l'écrou (deux côtés) |
+| 9 | **Segments/tour** | Résolution angulaire, multiple de 6 (défaut 24) |
+| 10 | **Angle overhang max** | Plastique FDM uniquement — angle depuis la verticale (défaut 60°) |
 
-Cliquer **Générer** : les objets apparaissent à l'origine du modèle dans des groupes nommés `Tige M10x1.5 L50 ISO` et `Ecrou M10x1.5 L50 ISO`.
-
-> **Unité** : toutes les valeurs sont saisies dans l'unité affichée par SketchUp. Si le modèle est en mètres, taper `10` génère un objet de 10 mètres de diamètre.
+> **Unité** : toutes les valeurs sont saisies dans l'unité courante du modèle SketchUp. Si le modèle est en mètres, taper `10` génère un filet de 10 mètres de diamètre.
 
 ## Profils de filet
 
 ### ISO métrique
-Profil en V 60° conforme ISO 261 / ISO 724. Vertices placés exactement aux crêtes et fonds de filet — arêtes vives, aucun arrondi de maillage.
+Profil en V 60° conforme ISO 261 / ISO 724. Vertices placés exactement aux crêtes et fonds.
 
-### Optimisé plastique FDM
-Profil trapézoïdal 30° avec profondeur réduite à 0,65 × P. Recommandé pour l'impression 3D :
-- Pas recommandé auto-calculé (≈ 0,25 × D)
-- Flancs moins inclinés → moins d'overhang → meilleure qualité d'impression
-- Profondeur réduite → tolérance accrue aux écarts dimensionnels FDM
-
-## Écrou hexagonal
-
-L'écrou est généré en un seul `PolygonMesh` sans booléen :
-- Forme extérieure hexagonale DIN 934 (table M3–M20 intégrée)
-- Alésage fileté : `r_bore = r_tige ± gap` (jeu appliqué au rayon)
-- Solide watertight garanti
-
-## Chanfrein d'entrée
-
-Le chanfrein est un tronc de cône (45°, longueur = 1 pas) :
-- **Tige** : haut uniquement. `min(r, cone_r)` — le cône soustrait les crêtes progressivement, les creux restent intacts jusqu'à être atteints par le cône.
-- **Écrou** : deux côtés. `max(r, r_chamfer)` — miroir exact du chanfrein tige, l'alésage s'évase vers les faces.
-
-## Notes techniques
-
-### Scale-trick adaptatif
-SketchUp a une tolérance interne ≈ 0,001 pouce. Pour les filets en mm/cm, les arêtes hélicoïdales (≈ P/N) peuvent approcher cette limite. Le plugin construit la géométrie à **100×** puis applique `group.transform!(1/100)`. En mètres, la géométrie est déjà grande (SCALE = 1).
-
-### Compatibilité
-- SketchUp 2014–2016 : `UI::WebDialog`
-- SketchUp 2017+ : `UI::HtmlDialog` (détection automatique)
-- Ruby 2.0+ (aucune dépendance externe)
+### Plastique FDM optimisé
+Profil en V avec profondeur dérivée de l'angle d'overhang max :
+`profondeur = (P/2) × tan(angle_depuis_verticale)`
 
 ## Limitations connues
 
 - Filet à droite uniquement
 - Pas de tête de vis (DIN 933) — écrou DIN 934 uniquement
-- Profil plastique FDM à valider selon le matériau et la machine
-
-## Structure du projet
-
-```
-vis_filets_generator.rb        # Loader + enregistrement extension
-vis_filets_generator/
-  main.rb                      # Menu + point d'entrée
-  presets.rb                   # Tables M3–M20 ISO + pitches FDM recommandés
-  profiles.rb                  # IsoProfile (60°), PlasticProfile (30°)
-  geometry.rb                  # Génération PolygonMesh (tige + écrou)
-  dialog.rb                    # Interface utilisateur (WebDialog / HtmlDialog)
-build/
-  vis_filets_generator.rbz     # Extension installable
-```
+- Profil plastique : à valider selon le matériau et l'imprimante
 
 ## Fichiers de référence (prototype initial)
 
-- `vis_M10x1.5_L50_brut.rb` — script Ruby standalone M10×1,5 L=50mm (origine du projet)
+- `vis_M10x1.5_L50_brut.rb` — script Ruby standalone M10×1,5 L=50mm
 - `vis_M10x1.5_L50_brut.stl` — STL de référence validé (38 448 triangles, watertight)

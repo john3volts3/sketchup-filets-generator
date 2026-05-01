@@ -47,7 +47,7 @@ module VisFiletsGenerator
     def self.generate_tige(params, model, x_off = 0.0)
       d      = params['d'].to_f
       pitch  = params['pitch'].to_f
-      length = params['length'].to_f
+      length = params.fetch('length_tige', params.fetch('length', 50.0)).to_f
       nth    = params['n_theta'].to_i
       chamf  = params['chamfer']
 
@@ -114,7 +114,7 @@ module VisFiletsGenerator
     def self.generate_ecrou(params, model, x_off = 0.0)
       d      = params['d'].to_f
       pitch  = params['pitch'].to_f
-      length = params['length'].to_f
+      length = params.fetch('length_ecrou', params.fetch('length', 8.0)).to_f
       nth    = params['n_theta'].to_i
       gap    = params['gap'].to_f
       chamf  = params['chamfer']
