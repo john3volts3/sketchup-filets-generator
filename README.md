@@ -1,64 +1,94 @@
-# Tige filetée M10 × 1,5 — L = 50 mm — brut
+# vis_filets_generator — Plugin SketchUp
 
-Génération paramétrique d'une tige filetée métrique standard, livrée en deux formats :
+Générateur paramétrique de **tiges filetées** et **écrous hexagonaux** pour SketchUp, optimisé pour l'impression 3D FDM. Compatible SketchUp 2014 à la version la plus récente.
 
-- **STL binaire** (`vis_M10x1.5_L50_brut.stl`) — directement utilisable en impression 3D ou import dans n'importe quel slicer / modeleur.
-- **Script Ruby SketchUp 2021** (`vis_M10_sketchup2021.rb`, peut être renommé localement) — génère la même géométrie nativement dans une scène SketchUp.
+## Pourquoi ce plugin ?
 
-## Spécifications
+Les plugins de filets existants pour SketchUp exigent de dessiner le profil manuellement ou ne génèrent pas de solides exploitables. Ce plugin produit directement des **solides watertight** prêts pour le slicer, dans n'importe quelle unité SketchUp (mm, cm, m…).
 
-| Paramètre | Valeur | Source |
-|---|---|---|
-| Norme | ISO 261 (série métrique) / ISO 724 (cotes de base) | ISO |
-| Diamètre nominal D | 10,000 mm | ISO 261 |
-| Pas P (normal/gros) | 1,500 mm | ISO 261 |
-| Hauteur théorique du triangle H | 1,2990 mm = P · √3/2 | ISO 724 |
-| Rayon de crête | 5,0000 mm = D/2 | — |
-| Rayon de fond | 4,1881 mm = D/2 − 5H/8 | ISO 724 |
-| Profil | triangulaire 60°, crête tronquée à P/8, fond tronqué à P/4, flancs à 30° | ISO 724 |
-| Longueur | 50 mm | spec utilisateur |
-| Tête | aucune (tige filetée brute, extrémités plates) | spec utilisateur |
-| Segments par tour (θ) | 24 | spec utilisateur |
-| Niveaux par pas (z) | 24 → dz = 0,0625 mm | choix résolution |
+## Installation
 
-## Fichier STL
+1. Télécharger `build/vis_filets_generator.rbz`
+2. Dans SketchUp : **Fenêtre → Gestionnaire d'extensions → Installer l'extension**
+3. Sélectionner le fichier `.rbz`
+4. Redémarrer SketchUp
 
-- **Triangles** : 38 448
-- **Taille** : ~1,9 Mo
-- **Watertight** : oui (toutes les arêtes sont partagées par exactement 2 triangles, vérifié)
-- **Boîte englobante** : Ø 10 mm × L 50 mm
-- **Origine** : base de la tige à z = 0, axe Z
+## Utilisation
 
-## Script Ruby SketchUp 2021
+Menu **Extensions → Vis & Filets → Générer…**
 
-### Utilisation
+Une boîte de dialogue s'ouvre avec les paramètres suivants :
 
-1. Ouvrir SketchUp 2021
-2. Menu : **Fenêtre → Console Ruby**
-3. Exécuter (les slashes forward sont obligatoires pour Ruby sous Windows) :
+| # | Paramètre | Description |
+|---|-----------|-------------|
+| 1 | **Profil** | ISO métrique (60°) ou Optimisé plastique FDM (trapézoïdal 30°) |
+| 2 | **D** | Diamètre nominal — dropdown M3–M20 (ISO) ou saisie libre |
+| 3 | **Pas P** | Auto-rempli depuis la table ISO, toujours éditable |
+| 4 | **Hauteur** | Longueur de la pièce, dans l'unité courante du modèle |
+| 5 | **Pièces** | ☑ Tige filetée  ☑ Écrou hexagonal (les deux cochables simultanément) |
+| 6 | **Gap** | Jeu radial ajouté à l'alésage de l'écrou (défaut 0,3 mm ISO / 0,4 mm plastique) |
+| 7 | **Chanfrein** | Chanfrein d'entrée 45° sur la tige (haut) et l'écrou (deux côtés) |
+| 8 | **Segments/tour** | Résolution angulaire, multiple de 6 (défaut 24) |
 
-   ```ruby
-   load 'P:/develop/print3d/2026-3D/claude-tige-filetee/vis_M10x1.5_L50_brut.rb'
-   ```
+Cliquer **Générer** : les objets apparaissent à l'origine du modèle dans des groupes nommés `Tige M10x1.5 L50 ISO` et `Ecrou M10x1.5 L50 ISO`.
 
-4. La vis est créée à l'origine, axe Z, dans un Group nommé `Vis M10x1.5 L50 brut`.
+> **Unité** : toutes les valeurs sont saisies dans l'unité affichée par SketchUp. Si le modèle est en mètres, taper `10` génère un objet de 10 mètres de diamètre.
 
-### Astuce d'échelle (point clé)
+## Profils de filet
 
-Le script construit la géométrie à **100 × la taille réelle**, puis applique `Geom::Transformation.scaling(ORIGIN, 1/100)` au groupe pour revenir à 1:1.
+### ISO métrique
+Profil en V 60° conforme ISO 261 / ISO 724. Vertices placés exactement aux crêtes et fonds de filet — arêtes vives, aucun arrondi de maillage.
 
-Raison : SketchUp a une tolérance interne d'environ **0,001 pouce ≈ 0,0254 mm** en dessous de laquelle les arêtes courtes peuvent être fusionnées ou recomposées de manière imprévisible (référence : doc Trimble et communauté SketchUp Sage). Or `dz = P/24 = 0,0625 mm ≈ 0,00246″` est juste au-dessus de cette limite — assez pour produire un artefact visuel de « double filet » dans le creux.
+### Optimisé plastique FDM
+Profil trapézoïdal 30° avec profondeur réduite à 0,65 × P. Recommandé pour l'impression 3D :
+- Pas recommandé auto-calculé (≈ 0,25 × D)
+- Flancs moins inclinés → moins d'overhang → meilleure qualité d'impression
+- Profondeur réduite → tolérance accrue aux écarts dimensionnels FDM
 
-À 100×, les arêtes axiales font ~6 mm, bien au-delà de toute tolérance. La transformation finale ramène la pièce à la taille exacte sans réintroduire les défauts.
+## Écrou hexagonal
 
-## Vérifications effectuées
+L'écrou est généré en un seul `PolygonMesh` sans booléen :
+- Forme extérieure hexagonale DIN 934 (table M3–M20 intégrée)
+- Alésage fileté : `r_bore = r_tige ± gap` (jeu appliqué au rayon)
+- Solide watertight garanti
 
-- STL ouvert et parsé : 38 448 triangles, watertight parfait, dimensions exactes (Ø 10,000 mm × L 50,000 mm).
-- Script Ruby validé syntaxiquement (`ruby -c`).
-- Profil ISO recalculé manuellement : H = 1,2990, fond = 4,1881 → conforme tabulation ISO 724.
+## Chanfrein d'entrée
 
-## Limites connues
+Le chanfrein est un tronc de cône (45°, longueur = 1 pas) :
+- **Tige** : haut uniquement. `min(r, cone_r)` — le cône soustrait les crêtes progressivement, les creux restent intacts jusqu'à être atteints par le cône.
+- **Écrou** : deux côtés. `max(r, r_chamfer)` — miroir exact du chanfrein tige, l'alésage s'évase vers les faces.
 
-- Le profil est une approximation linéaire ISO simplifiée (pas de congé R = H/6 au fond, généralement omis pour FDM).
-- Les extrémités sont coupées droites : pas de chanfrein de queue, ni d'amorce d'engagement de filet.
-- La tige est « brute » : pas de tête, pas de fente, pas de marquage.
+## Notes techniques
+
+### Scale-trick adaptatif
+SketchUp a une tolérance interne ≈ 0,001 pouce. Pour les filets en mm/cm, les arêtes hélicoïdales (≈ P/N) peuvent approcher cette limite. Le plugin construit la géométrie à **100×** puis applique `group.transform!(1/100)`. En mètres, la géométrie est déjà grande (SCALE = 1).
+
+### Compatibilité
+- SketchUp 2014–2016 : `UI::WebDialog`
+- SketchUp 2017+ : `UI::HtmlDialog` (détection automatique)
+- Ruby 2.0+ (aucune dépendance externe)
+
+## Limitations connues
+
+- Filet à droite uniquement
+- Pas de tête de vis (DIN 933) — écrou DIN 934 uniquement
+- Profil plastique FDM à valider selon le matériau et la machine
+
+## Structure du projet
+
+```
+vis_filets_generator.rb        # Loader + enregistrement extension
+vis_filets_generator/
+  main.rb                      # Menu + point d'entrée
+  presets.rb                   # Tables M3–M20 ISO + pitches FDM recommandés
+  profiles.rb                  # IsoProfile (60°), PlasticProfile (30°)
+  geometry.rb                  # Génération PolygonMesh (tige + écrou)
+  dialog.rb                    # Interface utilisateur (WebDialog / HtmlDialog)
+build/
+  vis_filets_generator.rbz     # Extension installable
+```
+
+## Fichiers de référence (prototype initial)
+
+- `vis_M10x1.5_L50_brut.rb` — script Ruby standalone M10×1,5 L=50mm (origine du projet)
+- `vis_M10x1.5_L50_brut.stl` — STL de référence validé (38 448 triangles, watertight)
