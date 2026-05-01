@@ -117,15 +117,21 @@ Création du plugin SketchUp `vis_filets_generator` — générateur paramétriq
 | Objets à mauvaise échelle | `.mm` hardcodé, unité modèle non lue | `unit_factor` + `compute_scale` |
 | 48 arêtes coplanaires (haut) | `pad_columns!` duplique z=L → faces hauteur 0 | `unless dup_i / dup_i2` |
 | 9 arêtes à 3 faces | Lignes centrales ajoutées comme edges mesh dans l'écrou | Suppression des lignes centrales |
-| Écrou avec chanfrein = solide sans trou | Cone clip fermait l'alésage à r=0 | Chanfrein désactivé sur l'alésage |
+| Écrou avec chanfrein = solide sans trou | Cone clip fermait l'alésage à r=0 | `apply_bore_chamfer` séparé avec `max` |
+| Écrou diamètre trop grand | `r_bore_min = (D+gap)/2` au lieu de `r_minor_tige + gap` | `r_bore_min = ext_prof.r_minor + gap` |
+| Gap appliqué au diamètre au lieu du rayon | Division par 2 inutile | Suppression de `gap / 2.0` |
+| Chanfrein tige : creux remontaient au niveau du cône | `force cone_r` modifiait les creux | `min(r, cone_r)` → cône soustrait uniquement |
+| Chanfrein tige : cylindre au bout (cône invisible) | `lc = r_major - r_minor` trop court | `lc = pitch` (1 pas, angle 45°) |
 
-### État final validé
+### État final validé ✅
 
-- ✅ Tige ISO, tige plastique — sans chanfrein
-- ✅ Écrou ISO, écrou plastique — sans chanfrein
+- ✅ Tige ISO sans chanfrein — géométrie parfaite, imprimée et validée
+- ✅ Tige ISO avec chanfrein — imprimée, engranée et validée
+- ✅ Écrou ISO sans chanfrein — diamètres corrects, jeu radial = gap
 - ✅ Tige + écrou générés simultanément
-- ✅ Toutes unités (mm, cm, m) — testé en mètres
-- ⚠ Chanfrein : fonctionnel visuellement, non validé solide parfait
+- ✅ Toutes unités (mm, cm, m)
+- ⚠ Profil plastique FDM — à valider à l'impression
+- ⚠ Chanfrein écrou — à valider à l'impression
 - Plugin livré dans `P:\develop\2026\claude\sketchup-filets\`
 - Copié dans `%APPDATA%\SketchUp\SketchUp 2021\SketchUp\Plugins\`
 

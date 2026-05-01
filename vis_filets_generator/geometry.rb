@@ -129,18 +129,18 @@ module VisFiletsGenerator
       end
       hex_r = s_flat / Math.sqrt(3.0)
 
-      # Profil de l'alesage
+      # Profil de l'alesage : l'ecrou est decale de gap/2 radialement par rapport a la tige
+      # r_bore_min = crete ecrou (s'engage dans le creux de la tige) = r_minor_tige + gap/2
+      # r_bore_max = fond ecrou  (recoit la crete de la tige)        = r_major_tige + gap/2
       ext_prof   = make_profile(params['profile_type'], d / 2.0, pitch)
-      depth      = ext_prof.r_major - ext_prof.r_minor
-      r_bore_min = (d + gap) / 2.0
-      r_bore_max = r_bore_min + depth
+      r_bore_min = ext_prof.r_minor + gap   # gap applique au rayon
+      r_bore_max = ext_prof.r_major + gap
       bore_prof  = make_profile_custom(params['profile_type'], r_bore_max, r_bore_min, pitch)
 
       uf = unit_factor
       sc = compute_scale(pitch, nth, uf)
 
-      # Chanfrein non applique sur l'alesage : modifier le bore fermerait le trou
-      cols = build_columns(nth, pitch, length, bore_prof, false)
+      cols = build_columns(nth, pitch, length, bore_prof, chamf, true)
       pad_columns!(cols)
       nz = cols.first.length
 
@@ -248,7 +248,8 @@ module VisFiletsGenerator
     end
 
     # Colonnes de (z, r) placees exactement aux transitions de profil
-    def self.build_columns(nth, pitch, length, profile, chamfer)
+    # bore=true : applique apply_bore_chamfer (alesage) au lieu de apply_chamfer (tige)
+    def self.build_columns(nth, pitch, length, profile, chamfer, bore = false)
       columns = []
       nth.times do |i|
         theta        = 2.0 * Math::PI * i / nth
@@ -263,7 +264,10 @@ module VisFiletsGenerator
             next if z < -1e-9 || z > length + 1e-9
             z = [[z, 0.0].max, length].min
             r = profile.radius_at(theta, z)
-            r = apply_chamfer(r, z, length, profile.r_major, pitch) if chamfer
+            if chamfer
+              r = bore ? apply_bore_chamfer(r, z, length, profile.r_minor, pitch)
+                       : apply_chamfer(r, z, length, profile.r_major, profile.r_minor, pitch)
+            end
             features << [z, r]
           end
         end
@@ -273,12 +277,18 @@ module VisFiletsGenerator
 
         if features.empty? || features.first[0] > 1e-9
           r0 = profile.radius_at(theta, 0.0)
-          r0 = apply_chamfer(r0, 0.0, length, profile.r_major, pitch) if chamfer
+          if chamfer
+            r0 = bore ? apply_bore_chamfer(r0, 0.0, length, profile.r_minor, pitch)
+                      : apply_chamfer(r0, 0.0, length, profile.r_major, profile.r_minor, pitch)
+          end
           features.unshift([0.0, r0])
         end
         if features.empty? || features.last[0] < length - 1e-9
           rl = profile.radius_at(theta, length)
-          rl = apply_chamfer(rl, length, length, profile.r_major, pitch) if chamfer
+          if chamfer
+            rl = bore ? apply_bore_chamfer(rl, length, length, profile.r_minor, pitch)
+                      : apply_chamfer(rl, length, length, profile.r_major, profile.r_minor, pitch)
+          end
           features.push([length, rl])
         end
 
@@ -287,16 +297,32 @@ module VisFiletsGenerator
       columns
     end
 
-    # Chanfrein d'entree de filet (haut uniquement, angle 45 deg) :
-    # Zone [L-Lc, L] avec Lc = pitch (1 pas axial).
-    # Tous les points de la zone sont FORCES sur la surface du cone :
-    #   cone_r(z) = r_major - (z - (L-Lc))   (tan 45deg = 1)
-    # Le profil helicoidal disparait dans cette zone => surface conique lisse.
-    # Face du haut : disque plat a r = r_major - pitch.
-    def self.apply_chamfer(r, z, length, r_major, pitch)
+    # Chanfrein d'entree de filet (haut uniquement, 45 deg) :
+    # Lc = pitch (1 pas axial — assez long pour etre visible).
+    # effective_r = min(profile_r, cone_r) => le cone ne fait QUE soustraire de la matiere.
+    # Cretes clippees des le debut. Creux preserves jusqu'a ce que le cone les atteigne,
+    # puis manges progressivement (min => jamais de saut brutal, pas de raccord).
+    def self.apply_chamfer(r, z, length, r_major, r_minor, pitch)
       lc = pitch.to_f
       return r if z < length - lc
-      [r_major - (z - (length - lc)), 0.0].max
+      cone_r = [r_major - (z - (length - lc)), 0.0].max
+      [r.to_f, cone_r].min
+    end
+
+    # Chanfrein de l'alesage (ecrou) — miroir exact du chanfrein de la tige.
+    # Tige : min(r, cone_r)       => cone soustrait de la matiere (crete vers axe)
+    # Ecrou : max(r, r_chamfer)   => cone soustrait de la matiere (alésage s'ouvre)
+    # Les fonds du filet (r_bore_max) sont preserves jusqu'a ce que le cone les atteigne,
+    # puis manges progressivement — pas de saut brutal, symétrie parfaite.
+    def self.apply_bore_chamfer(r, z, length, r_bore_min, pitch)
+      lc = pitch.to_f
+      if z <= lc
+        [r.to_f, r_bore_min + (lc - z)].max
+      elsif z >= length - lc
+        [r.to_f, r_bore_min + (z - (length - lc))].max
+      else
+        r
+      end
     end
 
     def self.pad_columns!(columns)
@@ -345,8 +371,8 @@ module VisFiletsGenerator
 
     private_class_method :unit_factor, :compute_scale,
                          :make_profile, :make_profile_custom,
-                         :build_columns, :apply_chamfer, :pad_columns!,
-                         :build_verts, :add_center_lines_scaled, :format_name
+                         :build_columns, :apply_chamfer, :apply_bore_chamfer,
+                         :pad_columns!, :build_verts, :add_center_lines_scaled, :format_name
 
   end
 end
