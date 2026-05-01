@@ -54,8 +54,9 @@ module VisFiletsGenerator
       uf = unit_factor
       sc = compute_scale(pitch, nth, uf)
 
-      profile = make_profile(params['profile_type'], d / 2.0, pitch)
-      cols    = build_columns(nth, pitch, length, profile, chamf)
+      max_angle = params.fetch('max_overhang_angle', 45.0).to_f
+      profile   = make_profile(params['profile_type'], d / 2.0, pitch, max_angle)
+      cols      = build_columns(nth, pitch, length, profile, chamf)
       pad_columns!(cols)
       nz = cols.first.length
 
@@ -132,7 +133,8 @@ module VisFiletsGenerator
       # Profil de l'alesage : l'ecrou est decale de gap/2 radialement par rapport a la tige
       # r_bore_min = crete ecrou (s'engage dans le creux de la tige) = r_minor_tige + gap/2
       # r_bore_max = fond ecrou  (recoit la crete de la tige)        = r_major_tige + gap/2
-      ext_prof   = make_profile(params['profile_type'], d / 2.0, pitch)
+      max_angle  = params.fetch('max_overhang_angle', 45.0).to_f
+      ext_prof   = make_profile(params['profile_type'], d / 2.0, pitch, max_angle)
       r_bore_min = ext_prof.r_minor + gap   # gap applique au rayon
       r_bore_max = ext_prof.r_major + gap
       bore_prof  = make_profile_custom(params['profile_type'], r_bore_max, r_bore_min, pitch)
@@ -237,9 +239,9 @@ module VisFiletsGenerator
       (pitch.to_f / n_theta) * uf < 0.1 ? 100.0 : 1.0
     end
 
-    def self.make_profile(type, r_major, pitch)
+    def self.make_profile(type, r_major, pitch, max_angle = 45.0)
       type == 'iso' ? Profiles::IsoProfile.new(r_major, pitch)
-                    : Profiles::PlasticProfile.new(r_major, pitch)
+                    : Profiles::PlasticProfile.new(r_major, pitch, nil, max_angle)
     end
 
     def self.make_profile_custom(type, r_major, r_minor, pitch)

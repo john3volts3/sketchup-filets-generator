@@ -1,5 +1,5 @@
 # vis_filets_generator/profiles.rb
-# Profils de filets : ISO 60 deg et Plastique trapezoidale 30 deg
+# Profils de filets : ISO 60 deg et Plastique V angle-limite
 
 module VisFiletsGenerator
   module Profiles
@@ -13,7 +13,6 @@ module VisFiletsGenerator
         @pitch   = pitch.to_f
       end
 
-      # Rayon effectif pour un point de l'helice a (theta, z)
       def radius_at(theta, z)
         phase = (z - theta * @pitch / (2.0 * Math::PI)) % @pitch
         interpolate(phase / @pitch)
@@ -26,7 +25,7 @@ module VisFiletsGenerator
       end
     end
 
-    # Profil V symetrique ISO 60 deg (simplifie : crete et fond pointus)
+    # Profil V symetrique ISO 60 deg
     # Profondeur radiale = 5*H/8, H = P*sqrt(3)/2
     class IsoProfile < BaseProfile
       def initialize(r_major, pitch, r_minor = nil)
@@ -35,7 +34,6 @@ module VisFiletsGenerator
           r_minor = r_major.to_f - 5.0 * h / 8.0
         end
         super(r_major, r_minor, pitch)
-        # Phases de transition : crete (f=0) et fond (f=0.5)
         @feature_phases = [[0.0, @r_major], [0.5, @r_minor]]
       end
 
@@ -50,42 +48,32 @@ module VisFiletsGenerator
       end
     end
 
-    # Profil trapezoidale 30 deg optimise FDM (plats crete et fond)
-    # Profondeur radiale = 0,65 * P
-    # Structure : crete_plate | flanc_desc | fond_plat | flanc_mont | crete_plate
-    #             0          0.125        0.375       0.625        0.875        1.0
+    # Profil V optimise FDM — angle mesure depuis la VERTICALE (convention slicers FDM).
+    # depth = (P/2) * tan(angle_vertical)
+    # Plus l'angle vertical est grand, plus le flanc est incline et la profondeur grande.
+    # Cap a 0.9*P pour eviter des filets excessivement profonds.
+    # Exemples pour P=1.5mm (M10) :
+    #   60 deg (vertical) => depth = 1.30 mm  (30 deg depuis l'horizontale — imprimante standard)
+    #   45 deg (vertical) => depth = 0.75 mm  (45 deg — cas limite universel)
+    #   70 deg (vertical) => depth = 1.35 mm  (cap 0.9P=1.35mm — refroidissement excellent)
     class PlasticProfile < BaseProfile
-      def initialize(r_major, pitch, r_minor = nil)
+      def initialize(r_major, pitch, r_minor = nil, max_overhang_deg = 60.0)
         if r_minor.nil?
-          r_minor = r_major.to_f - 0.65 * pitch.to_f
+          angle_rad = [[max_overhang_deg.to_f, 5.0].max, 85.0].min * Math::PI / 180.0
+          depth     = (pitch.to_f / 2.0) * Math.tan(angle_rad)
+          r_minor   = [r_major.to_f - depth, r_major.to_f * 0.1].max
         end
         super(r_major, r_minor, pitch)
-        # Toutes les phases de transition pour placement exact des vertices
-        @feature_phases = [
-          [0.0,   @r_major],
-          [0.125, @r_major],
-          [0.375, @r_minor],
-          [0.5,   @r_minor],
-          [0.625, @r_minor],
-          [0.875, @r_major],
-        ]
+        @feature_phases = [[0.0, @r_major], [0.5, @r_minor]]
       end
 
       private
 
       def interpolate(f)
-        if f < 0.125
-          @r_major
-        elsif f < 0.375
-          t = (f - 0.125) / 0.25
-          @r_major + t * (@r_minor - @r_major)
-        elsif f < 0.625
-          @r_minor
-        elsif f < 0.875
-          t = (f - 0.625) / 0.25
-          @r_minor + t * (@r_major - @r_minor)
+        if f < 0.5
+          @r_major + (f / 0.5) * (@r_minor - @r_major)
         else
-          @r_major
+          @r_minor + ((f - 0.5) / 0.5) * (@r_major - @r_minor)
         end
       end
     end

@@ -123,7 +123,7 @@ Création du plugin SketchUp `vis_filets_generator` — générateur paramétriq
 | Chanfrein tige : creux remontaient au niveau du cône | `force cone_r` modifiait les creux | `min(r, cone_r)` → cône soustrait uniquement |
 | Chanfrein tige : cylindre au bout (cône invisible) | `lc = r_major - r_minor` trop court | `lc = pitch` (1 pas, angle 45°) |
 
-### État final validé ✅
+### État final validé ✅ (session 2026-05-01)
 
 - ✅ Tige ISO sans chanfrein — géométrie parfaite, imprimée et validée
 - ✅ Tige ISO avec chanfrein — imprimée, engranée et validée
@@ -131,6 +131,41 @@ Création du plugin SketchUp `vis_filets_generator` — générateur paramétriq
 - ✅ Tige + écrou générés simultanément
 - ✅ Toutes unités (mm, cm, m)
 - ⚠ Profil plastique FDM — à valider à l'impression
+
+---
+
+## Session du 2026-05-01 (suite — v1.2.0)
+
+### Nouvelles fonctionnalités
+
+**Persistence des paramètres** (`dialog.rb`)
+- `Sketchup.write_default` / `read_default` — tous les paramètres sont sauvegardés dans le registre SketchUp à chaque génération et restaurés à l'ouverture du dialog.
+- Fonction JS `initForm(SAVED)` : restaure les valeurs sans déclencher les handlers de cascade.
+
+**Profil plastique FDM refait** (`profiles.rb`)
+- Ancien : trapézoïdal 30° avec sections plates → angle du flanc ≈ 21° depuis l'horizontale (bavures à l'impression).
+- Nouveau : profil en V (même forme qu'ISO) avec profondeur dérivée de l'angle d'overhang max.
+- Formule : `depth = (P/2) × tan(angle_vertical)`
+- Le profil plastique devient distinct de l'ISO par sa profondeur (adaptée à l'imprimante), non par sa forme.
+
+**Paramètre "Angle / verticale (°)"** (`dialog.rb`)
+- Visible uniquement pour le profil plastique FDM.
+- Défaut : 60° (depuis la verticale = 30° depuis l'horizontale — imprimante standard).
+- Permet d'adapter le profil au refroidissement de l'imprimante (valeur élevée = imprimante performante = filet plus profond).
+- Sauvegardé avec les autres paramètres.
+
+### Corrections
+
+| Bug | Cause | Correction |
+|-----|-------|-----------|
+| Profil plastique sans overhang correct | Sections plates → angle flanc 21° | Profil en V, angle paramétrable |
+| Paramètre angle sans effet | Cap 0,65P trop bas (atteint dès 52°) | Suppression du cap, seul garde-fou physique r_minor ≥ 0.1×r_major |
+
+### État v1.2.0 ✅
+
+- ✅ Paramètres persistants entre sessions
+- ✅ Profil plastique paramétrable par angle d'overhang (validé visuellement)
+- ✅ Angle 30° vs 70° depuis la verticale → profondeurs clairement différentes
 - ⚠ Chanfrein écrou — à valider à l'impression
 - Plugin livré dans `P:\develop\2026\claude\sketchup-filets\`
 - Copié dans `%APPDATA%\SketchUp\SketchUp 2021\SketchUp\Plugins\`

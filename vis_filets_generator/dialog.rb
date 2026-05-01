@@ -1,5 +1,6 @@
 # vis_filets_generator/dialog.rb
 # Interface utilisateur WebDialog (SU 2014+) avec upgrade HtmlDialog si SU 2017+
+# Parametres persistes entre sessions via Sketchup.write_default / read_default
 
 require 'json'
 require 'cgi'
@@ -8,8 +9,9 @@ module VisFiletsGenerator
   module DialogManager
 
     DIALOG_TITLE = 'Vis & Filets — Generateur'.freeze
+    PREF_KEY     = 'VisFiletsGenerator'.freeze
 
-    HTML = <<~'HTML'
+    HTML_TEMPLATE = <<~'HTML'
       <!DOCTYPE html>
       <html>
       <head>
@@ -88,6 +90,12 @@ module VisFiletsGenerator
           <input type="number" id="gap" value="0.3" min="0" step="0.05">
         </div>
         <div class="check-row"><label><input type="checkbox" id="chamfer"> Chanfrein aux extremites</label></div>
+        <div class="row" id="max_angle_row" style="display:none">
+          <div class="lbl">Angle / verticale (°)</div>
+          <input type="number" id="max_overhang_angle" value="60" min="10" max="85" step="5"
+                 onchange="updateAngleHint()">
+          <span class="adj" id="angle_hint"></span>
+        </div>
         <div class="row">
           <div class="lbl">Segments / tour</div>
           <input type="number" id="n_theta" value="24" min="6" max="120" step="6" onchange="onNTheta()">
@@ -103,13 +111,47 @@ module VisFiletsGenerator
                M8:{d:8,p:1.25},M10:{d:10,p:1.5},M12:{d:12,p:1.75},
                M16:{d:16,p:2.0},M20:{d:20,p:2.5}};
 
+      // Valeurs sauvegardees injectees par Ruby (placeholder remplace au chargement)
+      var SAVED = __SAVED_JSON__;
+
       function g(id){return document.getElementById(id);}
       function fv(id){return parseFloat(g(id).value)||0;}
       function iv(id){return parseInt(g(id).value)||0;}
 
+      // Restaure les parametres sauvegardes sans declencher les handlers de cascade
+      function initForm(s){
+        if(!s) return;
+        if(s.profile_type!==undefined) g('profile_type').value=s.profile_type;
+        var isPlastic=(g('profile_type').value==='plastic');
+        g('iso_preset_row').style.display=isPlastic?'none':'flex';
+        g('max_angle_row').style.display=isPlastic?'flex':'none';
+        if(s.m_size!==undefined)       g('m_size').value=s.m_size;
+        if(s.d!==undefined)            g('d').value=s.d;
+        if(s.pitch!==undefined)        g('pitch').value=s.pitch;
+        if(s.length!==undefined)       g('length').value=s.length;
+        if(s.create_tige!==undefined)  g('create_tige').checked=s.create_tige;
+        if(s.create_ecrou!==undefined) g('create_ecrou').checked=s.create_ecrou;
+        if(s.gap!==undefined)          g('gap').value=s.gap;
+        if(s.chamfer!==undefined)             g('chamfer').checked=s.chamfer;
+        if(s.n_theta!==undefined)             g('n_theta').value=s.n_theta;
+        if(s.max_overhang_angle!==undefined)  g('max_overhang_angle').value=s.max_overhang_angle;
+        updateHint();
+        updateAngleHint();
+      }
+
+      function updateAngleHint(){
+        if(g('profile_type').value!=='plastic'){g('angle_hint').textContent='';return;}
+        var pitch=fv('pitch')||1.5;
+        var angle=parseFloat(g('max_overhang_angle').value)||60;
+        var rad=angle*Math.PI/180;
+        var d=(pitch/2)*Math.tan(rad);
+        g('angle_hint').textContent='prof. '+d.toFixed(3)+' mm';
+      }
+
       function onProfileChange(){
         var t=g('profile_type').value;
         g('iso_preset_row').style.display=(t==='iso')?'flex':'none';
+        g('max_angle_row').style.display=(t==='plastic')?'flex':'none';
         if(t==='plastic'){
           var d=fv('d')||10;
           g('pitch').value=(0.25*d).toFixed(2);
@@ -120,6 +162,7 @@ module VisFiletsGenerator
           onMSize();
         }
         updateHint();
+        updateAngleHint();
       }
 
       function onMSize(){
@@ -172,7 +215,8 @@ module VisFiletsGenerator
           create_tige:tige, create_ecrou:ecrou,
           gap:gap,
           chamfer:g('chamfer').checked,
-          n_theta:nth
+          n_theta:nth,
+          max_overhang_angle:parseFloat(g('max_overhang_angle').value)||45
         };
         var j=JSON.stringify(p);
         if(typeof sketchup!=='undefined'){
@@ -182,18 +226,44 @@ module VisFiletsGenerator
         }
       }
 
-      updateHint();
+      window.onload = function(){ initForm(SAVED); };
       </script>
       </body>
       </html>
     HTML
 
+    # -------------------------------------------------------------------------
+    # Persistance des parametres (registre SketchUp)
+    # -------------------------------------------------------------------------
+    def self.read_defaults
+      {
+        'profile_type' => Sketchup.read_default(PREF_KEY, 'profile_type', 'iso'),
+        'm_size'       => Sketchup.read_default(PREF_KEY, 'm_size',       'M10'),
+        'd'            => Sketchup.read_default(PREF_KEY, 'd',            10.0).to_f,
+        'pitch'        => Sketchup.read_default(PREF_KEY, 'pitch',        1.5).to_f,
+        'length'       => Sketchup.read_default(PREF_KEY, 'length',       50.0).to_f,
+        'create_tige'  => Sketchup.read_default(PREF_KEY, 'create_tige',  true),
+        'create_ecrou' => Sketchup.read_default(PREF_KEY, 'create_ecrou', false),
+        'gap'          => Sketchup.read_default(PREF_KEY, 'gap',          0.3).to_f,
+        'chamfer'      => Sketchup.read_default(PREF_KEY, 'chamfer',      false),
+        'n_theta'            => Sketchup.read_default(PREF_KEY, 'n_theta',            24).to_i,
+        'max_overhang_angle' => Sketchup.read_default(PREF_KEY, 'max_overhang_angle', 60.0).to_f,
+      }
+    end
+
+    def self.save_defaults(params)
+      params.each { |k, v| Sketchup.write_default(PREF_KEY, k, v) }
+    end
+
+    def self.build_html(defs)
+      HTML_TEMPLATE.sub('__SAVED_JSON__', defs.to_json)
+    end
+
+    # -------------------------------------------------------------------------
+    # Affichage du dialog
+    # -------------------------------------------------------------------------
     def self.show
-      if defined?(UI::HtmlDialog)
-        show_html_dialog
-      else
-        show_web_dialog
-      end
+      defined?(UI::HtmlDialog) ? show_html_dialog : show_web_dialog
     end
 
     def self.show_html_dialog
@@ -206,7 +276,7 @@ module VisFiletsGenerator
         min_height: 400,
         style: UI::HtmlDialog::STYLE_DIALOG
       )
-      dlg.set_html(HTML)
+      dlg.set_html(build_html(read_defaults))
       dlg.add_action_callback('generate') do |_ctx, json_str|
         handle_generate(json_str)
       end
@@ -215,7 +285,7 @@ module VisFiletsGenerator
 
     def self.show_web_dialog
       dlg = UI::WebDialog.new(DIALOG_TITLE, false, 'VFGDialog', 340, 580, 100, 100, true)
-      dlg.set_html(HTML)
+      dlg.set_html(build_html(read_defaults))
       dlg.add_action_callback('generate') do |_dlg, encoded|
         begin
           json_str = CGI.unescape(encoded.to_s)
@@ -229,12 +299,14 @@ module VisFiletsGenerator
 
     def self.handle_generate(json_str)
       params = JSON.parse(json_str)
+      save_defaults(params)
       Geometry.generate(params, Sketchup.active_model)
     rescue JSON::ParserError => e
       UI.messagebox("Erreur JSON : #{e.message}", MB_OK)
     end
 
-    private_class_method :show_html_dialog, :show_web_dialog, :handle_generate
+    private_class_method :read_defaults, :save_defaults, :build_html,
+                         :show_html_dialog, :show_web_dialog, :handle_generate
 
   end
 end

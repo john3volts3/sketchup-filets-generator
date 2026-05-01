@@ -1,7 +1,7 @@
 # Spécifications fonctionnelles détaillées (FSD)
 
 **Projet** : Plugin SketchUp `vis_filets_generator` — Générateur de filets paramétriques
-**Version** : 1.0.0
+**Version** : 1.2.0
 **Date** : 2026-05-01
 
 ---
@@ -26,6 +26,7 @@ Compatibilité : SketchUp 2014 à la version la plus récente.
 | 6 | Gap | Saisie numérique | 0,3 mm défaut ISO ; 0,4 mm défaut plastique |
 | 7 | Chanfrein | Case à cocher | Non (défaut) |
 | 8 | Segments/tour | Entier multiple de 6 | 24 (défaut) |
+| 9 | Angle / verticale (°) | Entier 10–85, visible si profil plastique | 60° |
 
 Toutes les valeurs dimensionnelles sont dans l'**unité courante du modèle SketchUp** (mm, cm, m…).
 
