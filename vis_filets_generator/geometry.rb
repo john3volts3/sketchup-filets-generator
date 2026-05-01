@@ -277,21 +277,30 @@ module VisFiletsGenerator
         features.sort_by! { |e| e[0] }
         features.uniq!    { |e| (e[0] * 1_000_000).round }
 
+        # Cap z=0
+        # Pour le bore : force r=r_minor a z=0 (remplace le rayon du profil si necessaire)
+        # => b_idx[0] aura un rayon constant => face annulaire basse parfaitement plane.
+        r_cap_bot = bore ? profile.r_minor : profile.radius_at(theta, 0.0)
+        if chamfer
+          r_cap_bot = bore ? apply_bore_chamfer(r_cap_bot, 0.0, length, profile.r_minor, pitch)
+                           : apply_chamfer(r_cap_bot, 0.0, length, profile.r_major, profile.r_minor, pitch)
+        end
         if features.empty? || features.first[0] > 1e-9
-          r0 = profile.radius_at(theta, 0.0)
-          if chamfer
-            r0 = bore ? apply_bore_chamfer(r0, 0.0, length, profile.r_minor, pitch)
-                      : apply_chamfer(r0, 0.0, length, profile.r_major, profile.r_minor, pitch)
-          end
-          features.unshift([0.0, r0])
+          features.unshift([0.0, r_cap_bot])
+        elsif bore
+          features.first[1] = r_cap_bot  # ecrase le rayon existant
+        end
+
+        # Cap z=L (meme logique)
+        r_cap_top = bore ? profile.r_minor : profile.radius_at(theta, length)
+        if chamfer
+          r_cap_top = bore ? apply_bore_chamfer(r_cap_top, length, length, profile.r_minor, pitch)
+                           : apply_chamfer(r_cap_top, length, length, profile.r_major, profile.r_minor, pitch)
         end
         if features.empty? || features.last[0] < length - 1e-9
-          rl = profile.radius_at(theta, length)
-          if chamfer
-            rl = bore ? apply_bore_chamfer(rl, length, length, profile.r_minor, pitch)
-                      : apply_chamfer(rl, length, length, profile.r_major, profile.r_minor, pitch)
-          end
-          features.push([length, rl])
+          features.push([length, r_cap_top])
+        elsif bore
+          features.last[1] = r_cap_top
         end
 
         columns << features

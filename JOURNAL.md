@@ -166,6 +166,20 @@ Création du plugin SketchUp `vis_filets_generator` — générateur paramétriq
 - ✅ Paramètres persistants entre sessions
 - ✅ Profil plastique paramétrable par angle d'overhang (validé visuellement)
 - ✅ Angle 30° vs 70° depuis la verticale → profondeurs clairement différentes
+
+---
+
+## Session du 2026-05-01 (suite — v1.3.0)
+
+### Correction : faces top/bottom de l'écrou
+
+**Problème** : les faces annulaires (top et bottom) de l'écrou comportaient des lignes parasites et n'étaient pas planes. Cause : `b_idx[0]` et `b_idx[nz-1]` avaient des rayons variables (profil hélicoïdal oscillant entre r_bore_min et r_bore_max), rendant les triangles de la face annulaire non coplanaires.
+
+**Approche rejetée** : ajout d'anneaux de transition séparés → désastreux (anneau parasite, lignes dans tous les sens).
+
+**Correction retenue** (`build_columns`, bore=true) : forcer r=r_bore_min aux caps z=0 et z=L pour le bore. Si une feature existe déjà à z=0 avec un rayon du profil (ex. r_bore_max), ce rayon est écrasé par r_bore_min. Résultat : toutes les colonnes ont r=r_bore_min aux extrémités → faces annulaires planes.
+
+**État** : acceptable pour opérations booléennes sur solides. Quelques lignes résiduelles visibles mais n'affectent pas la solidité.
 - ⚠ Chanfrein écrou — à valider à l'impression
 - Plugin livré dans `P:\develop\2026\claude\sketchup-filets\`
 - Copié dans `%APPDATA%\SketchUp\SketchUp 2021\SketchUp\Plugins\`
