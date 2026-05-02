@@ -1,5 +1,8 @@
 # vis_filets_generator — SketchUp Plugin
 
+> **Finally — a thread plugin that just works.**
+> Watertight solids, correct ISO geometry, FDM-ready profiles, and a lead-in chamfer. No manual profiling, no broken meshes, no workarounds.
+
 Parametric generator for **threaded rods** and **hex nuts** in SketchUp, optimised for FDM 3D printing. Compatible with SketchUp 2014 through the latest version.
 
 ---
@@ -104,6 +107,9 @@ build/
 ---
 
 # vis_filets_generator — Plugin SketchUp
+
+> **Enfin — un plugin de filets qui fonctionne vraiment.**
+> Solides watertight, géométrie ISO correcte, profils adaptés à l'impression FDM, et chanfrein d'entrée. Sans dessin manuel, sans maillage cassé, sans contournement.
 
 Générateur paramétrique de **tiges filetées** et **écrous hexagonaux** pour SketchUp, optimisé pour l'impression 3D FDM. Compatible SketchUp 2014 jusqu'à la version la plus récente.
 
