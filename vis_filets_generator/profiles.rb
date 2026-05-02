@@ -57,11 +57,12 @@ module VisFiletsGenerator
     #   45 deg (vertical) => depth = 0.75 mm  (45 deg — cas limite universel)
     #   70 deg (vertical) => depth = 1.35 mm  (cap 0.9P=1.35mm — refroidissement excellent)
     class PlasticProfile < BaseProfile
-      def initialize(r_major, pitch, r_minor = nil, max_overhang_deg = 60.0)
+      def initialize(r_major, pitch, r_minor = nil, max_overhang_deg = 60.0, min_core_ratio = 0.70)
         if r_minor.nil?
-          angle_rad = [[max_overhang_deg.to_f, 5.0].max, 85.0].min * Math::PI / 180.0
-          depth     = (pitch.to_f / 2.0) * Math.tan(angle_rad)
-          r_minor   = [r_major.to_f - depth, r_major.to_f * 0.1].max
+          angle_rad   = [[max_overhang_deg.to_f, 5.0].max, 85.0].min * Math::PI / 180.0
+          depth       = (pitch.to_f / 2.0) * Math.tan(angle_rad)
+          r_minor_min = r_major.to_f * [[min_core_ratio.to_f, 0.05].max, 0.95].min
+          r_minor     = [r_major.to_f - depth, r_minor_min].max
         end
         super(r_major, r_minor, pitch)
         @feature_phases = [[0.0, @r_major], [0.5, @r_minor]]

@@ -24,10 +24,10 @@ module VisFiletsGenerator
            border-bottom:1px solid #e0e0e0;padding-bottom:4px;margin-bottom:6px}
         .row{display:flex;align-items:center;margin:4px 0}
         .lbl{width:130px;color:#333;flex-shrink:0}
-        select,input[type=number]{border:1px solid #bbb;border-radius:2px;padding:2px 4px;
+        select,input[type=text]{border:1px solid #bbb;border-radius:2px;padding:2px 4px;
           background:#fafafa;font-size:12px}
         select{width:130px}
-        input[type=number]{width:80px}
+        input[type=text]{width:80px}
         .check-row{margin:4px 0}
         .hint{color:#777;font-size:10px;margin-top:3px;font-style:italic}
         .adj{color:#2a7;font-size:10px;margin-left:4px}
@@ -37,6 +37,7 @@ module VisFiletsGenerator
         .err{color:#c00;font-size:11px;margin-top:4px;min-height:14px}
         .radio-row{margin:4px 0}
         .sub-row{margin:2px 0 2px 16px}
+        .dim{opacity:0.38;pointer-events:none}
       </style>
       </head>
       <body>
@@ -64,11 +65,11 @@ module VisFiletsGenerator
         </div>
         <div class="row">
           <div class="lbl">D (mm)</div>
-          <input type="number" id="d" value="10" min="1" step="0.1" onchange="onDChange()">
+          <input type="text" id="d" value="10" min="1" step="0.1" onchange="onDChange()">
         </div>
         <div class="row">
           <div class="lbl">Pitch P (mm)</div>
-          <input type="number" id="pitch" value="1.5" min="0.1" step="0.01">
+          <input type="text" id="pitch" value="1.5" min="0.1" step="0.01">
         </div>
         <div class="hint" id="eng_hint"></div>
       </div>
@@ -80,14 +81,14 @@ module VisFiletsGenerator
         </div>
         <div class="row sub-row" id="row_length_tige">
           <div class="lbl">Rod height (mm)</div>
-          <input type="number" id="length_tige" value="50" min="0.1" step="1">
+          <input type="text" id="length_tige" value="50" min="0.1" step="1">
         </div>
         <div class="check-row" style="margin-top:6px">
           <label><input type="checkbox" id="create_ecrou" onchange="onCreateChange()"> Hex nut &nbsp;(bore D + gap)</label>
         </div>
-        <div class="row sub-row" id="row_length_ecrou" style="display:none">
+        <div class="row sub-row" id="row_length_ecrou">
           <div class="lbl">Nut height (mm)</div>
-          <input type="number" id="length_ecrou" value="8" min="0.1" step="1">
+          <input type="text" id="length_ecrou" value="8" min="0.1" step="1">
         </div>
       </div>
 
@@ -95,18 +96,24 @@ module VisFiletsGenerator
         <h3>Options</h3>
         <div class="row">
           <div class="lbl">Gap (mm)</div>
-          <input type="number" id="gap" value="0.3" min="0" step="0.05">
+          <input type="text" id="gap" value="0.3" min="0" step="0.05">
         </div>
         <div class="check-row"><label><input type="checkbox" id="chamfer"> Thread lead-in chamfer</label></div>
-        <div class="row" id="max_angle_row" style="display:none">
+        <div class="row dim" id="max_angle_row">
           <div class="lbl">Max overhang angle (°)</div>
-          <input type="number" id="max_overhang_angle" value="60" min="10" max="85" step="5"
+          <input type="text" id="max_overhang_angle" value="60"
                  onchange="updateAngleHint()">
           <span class="adj" id="angle_hint"></span>
         </div>
+        <div class="row dim" id="min_core_row">
+          <div class="lbl">Min. core (%D)</div>
+          <input type="text" id="min_core_pct" value="70"
+                 onchange="updateCoreHint()">
+          <span class="adj" id="core_hint"></span>
+        </div>
         <div class="row">
           <div class="lbl">Segments / turn</div>
-          <input type="number" id="n_theta" value="24" min="6" max="120" step="6" onchange="onNTheta()">
+          <input type="text" id="n_theta" value="24" min="6" max="120" step="6" onchange="onNTheta()">
           <span class="adj" id="nth_hint"></span>
         </div>
       </div>
@@ -122,8 +129,15 @@ module VisFiletsGenerator
       var SAVED = __SAVED_JSON__;
 
       function g(id){return document.getElementById(id);}
-      function fv(id){return parseFloat(g(id).value)||0;}
-      function iv(id){return parseInt(g(id).value)||0;}
+      function norm(v){return (v+'').replace(',','.');}
+      function fv(id){return parseFloat(norm(g(id).value))||0;}
+      function iv(id){return parseInt(norm(g(id).value))||0;}
+
+      function setDim(id, v){
+        var el=g(id); if(!el)return;
+        el.style.opacity=v?'0.38':'1';
+        el.style.pointerEvents=v?'none':'';
+      }
 
       function getProfileType(){
         var radios=document.getElementsByName('profile_type');
@@ -132,8 +146,8 @@ module VisFiletsGenerator
       }
 
       function onCreateChange(){
-        g('row_length_tige').style.display=g('create_tige').checked?'flex':'none';
-        g('row_length_ecrou').style.display=g('create_ecrou').checked?'flex':'none';
+        setDim('row_length_tige',  !g('create_tige').checked);
+        setDim('row_length_ecrou', !g('create_ecrou').checked);
       }
 
       function initForm(s){
@@ -143,8 +157,9 @@ module VisFiletsGenerator
           for(var i=0;i<radios.length;i++) radios[i].checked=(radios[i].value===s.profile_type);
         }
         var isPlastic=(getProfileType()==='plastic');
-        g('iso_preset_row').style.display=isPlastic?'none':'flex';
-        g('max_angle_row').style.display=isPlastic?'flex':'none';
+        setDim('iso_preset_row', isPlastic);
+        setDim('max_angle_row',  !isPlastic);
+        setDim('min_core_row',   !isPlastic);
         if(s.m_size!==undefined)        g('m_size').value=s.m_size;
         if(s.d!==undefined)             g('d').value=s.d;
         if(s.pitch!==undefined)         g('pitch').value=s.pitch;
@@ -153,9 +168,10 @@ module VisFiletsGenerator
         if(s.create_tige!==undefined)   g('create_tige').checked=s.create_tige;
         if(s.create_ecrou!==undefined)  g('create_ecrou').checked=s.create_ecrou;
         if(s.gap!==undefined)           g('gap').value=s.gap;
-        if(s.chamfer!==undefined)             g('chamfer').checked=s.chamfer;
-        if(s.n_theta!==undefined)             g('n_theta').value=s.n_theta;
-        if(s.max_overhang_angle!==undefined)  g('max_overhang_angle').value=s.max_overhang_angle;
+        if(s.chamfer!==undefined)              g('chamfer').checked=s.chamfer;
+        if(s.n_theta!==undefined)              g('n_theta').value=s.n_theta;
+        if(s.max_overhang_angle!==undefined)   g('max_overhang_angle').value=s.max_overhang_angle;
+        if(s.min_core_pct!==undefined)         g('min_core_pct').value=s.min_core_pct;
         onCreateChange();
         updateHint();
         updateAngleHint();
@@ -164,16 +180,27 @@ module VisFiletsGenerator
       function updateAngleHint(){
         if(getProfileType()!=='plastic'){g('angle_hint').textContent='';return;}
         var pitch=fv('pitch')||1.5;
-        var angle=parseFloat(g('max_overhang_angle').value)||60;
-        var rad=angle*Math.PI/180;
-        var d=(pitch/2)*Math.tan(rad);
+        var angle=fv('max_overhang_angle')||60;
+        var d=(pitch/2)*Math.tan(angle*Math.PI/180);
         g('angle_hint').textContent='depth: '+d.toFixed(3)+' mm';
+        updateCoreHint();
+      }
+
+      function updateCoreHint(){
+        if(getProfileType()!=='plastic'){g('core_hint').textContent='';return;}
+        var D=fv('d')||10, pct=fv('min_core_pct')||70;
+        var r_maj=D/2, r_min=r_maj*pct/100;
+        var pitch=fv('pitch')||1.5, angle=fv('max_overhang_angle')||60;
+        var depth_req=(pitch/2)*Math.tan(angle*Math.PI/180);
+        var clamped=depth_req>(r_maj-r_min);
+        g('core_hint').textContent='core: '+(2*r_min).toFixed(2)+'mm'+(clamped?' ⚠ clamped':'');
       }
 
       function onProfileChange(){
-        var t=getProfileType();
-        g('iso_preset_row').style.display=(t==='iso')?'flex':'none';
-        g('max_angle_row').style.display=(t==='plastic')?'flex':'none';
+        var t=getProfileType(), isPlastic=(t==='plastic');
+        setDim('iso_preset_row', isPlastic);
+        setDim('max_angle_row',  !isPlastic);
+        setDim('min_core_row',   !isPlastic);
         if(t==='plastic'){
           var d=fv('d')||10;
           g('pitch').value=(0.25*d).toFixed(2);
@@ -241,7 +268,8 @@ module VisFiletsGenerator
           gap:gap,
           chamfer:g('chamfer').checked,
           n_theta:nth,
-          max_overhang_angle:parseFloat(g('max_overhang_angle').value)||60
+          max_overhang_angle:fv('max_overhang_angle')||60,
+          min_core_pct:fv('min_core_pct')||70
         };
         var j=JSON.stringify(p);
         if(typeof sketchup!=='undefined'){
@@ -274,6 +302,7 @@ module VisFiletsGenerator
         'chamfer'            => Sketchup.read_default(PREF_KEY, 'chamfer',            false),
         'n_theta'            => Sketchup.read_default(PREF_KEY, 'n_theta',            24).to_i,
         'max_overhang_angle' => Sketchup.read_default(PREF_KEY, 'max_overhang_angle', 60.0).to_f,
+        'min_core_pct'       => Sketchup.read_default(PREF_KEY, 'min_core_pct',       70.0).to_f,
       }
     end
 
@@ -297,7 +326,7 @@ module VisFiletsGenerator
         dialog_title:    DIALOG_TITLE,
         preferences_key: 'VFGDialog',
         width:  340,
-        height: 600,
+        height: 660,
         min_width:  300,
         min_height: 400,
         style: UI::HtmlDialog::STYLE_DIALOG
@@ -310,7 +339,7 @@ module VisFiletsGenerator
     end
 
     def self.show_web_dialog
-      dlg = UI::WebDialog.new(DIALOG_TITLE, false, 'VFGDialog', 340, 600, 100, 100, true)
+      dlg = UI::WebDialog.new(DIALOG_TITLE, false, 'VFGDialog', 340, 700, 100, 100, true)
       dlg.set_html(build_html(read_defaults))
       dlg.add_action_callback('generate') do |_dlg, encoded|
         begin

@@ -51,12 +51,12 @@ module VisFiletsGenerator
       nth    = params['n_theta'].to_i
       chamf  = params['chamfer']
 
-      uf = unit_factor
-      sc = compute_scale(pitch, nth, uf)
-
-      max_angle = params.fetch('max_overhang_angle', 45.0).to_f
-      profile   = make_profile(params['profile_type'], d / 2.0, pitch, max_angle)
-      cols      = build_columns(nth, pitch, length, profile, chamf)
+      uf             = unit_factor
+      sc             = compute_scale(pitch, nth, uf)
+      max_angle      = params.fetch('max_overhang_angle', 45.0).to_f
+      min_core_ratio = params.fetch('min_core_pct', 70.0).to_f / 100.0
+      profile        = make_profile(params['profile_type'], d / 2.0, pitch, max_angle, min_core_ratio)
+      cols           = build_columns(nth, pitch, length, profile, chamf)
       pad_columns!(cols)
       nz = cols.first.length
 
@@ -130,11 +130,9 @@ module VisFiletsGenerator
       end
       hex_r = s_flat / Math.sqrt(3.0)
 
-      # Profil de l'alesage : l'ecrou est decale de gap/2 radialement par rapport a la tige
-      # r_bore_min = crete ecrou (s'engage dans le creux de la tige) = r_minor_tige + gap/2
-      # r_bore_max = fond ecrou  (recoit la crete de la tige)        = r_major_tige + gap/2
-      max_angle  = params.fetch('max_overhang_angle', 45.0).to_f
-      ext_prof   = make_profile(params['profile_type'], d / 2.0, pitch, max_angle)
+      max_angle      = params.fetch('max_overhang_angle', 45.0).to_f
+      min_core_ratio = params.fetch('min_core_pct', 70.0).to_f / 100.0
+      ext_prof       = make_profile(params['profile_type'], d / 2.0, pitch, max_angle, min_core_ratio)
       r_bore_min = ext_prof.r_minor + gap   # gap applique au rayon
       r_bore_max = ext_prof.r_major + gap
       bore_prof  = make_profile_custom(params['profile_type'], r_bore_max, r_bore_min, pitch)
@@ -239,9 +237,9 @@ module VisFiletsGenerator
       (pitch.to_f / n_theta) * uf < 0.1 ? 100.0 : 1.0
     end
 
-    def self.make_profile(type, r_major, pitch, max_angle = 45.0)
+    def self.make_profile(type, r_major, pitch, max_angle = 45.0, min_core_ratio = 0.70)
       type == 'iso' ? Profiles::IsoProfile.new(r_major, pitch)
-                    : Profiles::PlasticProfile.new(r_major, pitch, nil, max_angle)
+                    : Profiles::PlasticProfile.new(r_major, pitch, nil, max_angle, min_core_ratio)
     end
 
     def self.make_profile_custom(type, r_major, r_minor, pitch)
@@ -277,30 +275,21 @@ module VisFiletsGenerator
         features.sort_by! { |e| e[0] }
         features.uniq!    { |e| (e[0] * 1_000_000).round }
 
-        # Cap z=0
-        # Pour le bore : force r=r_minor a z=0 (remplace le rayon du profil si necessaire)
-        # => b_idx[0] aura un rayon constant => face annulaire basse parfaitement plane.
-        r_cap_bot = bore ? profile.r_minor : profile.radius_at(theta, 0.0)
-        if chamfer
-          r_cap_bot = bore ? apply_bore_chamfer(r_cap_bot, 0.0, length, profile.r_minor, pitch)
-                           : apply_chamfer(r_cap_bot, 0.0, length, profile.r_major, profile.r_minor, pitch)
-        end
         if features.empty? || features.first[0] > 1e-9
-          features.unshift([0.0, r_cap_bot])
-        elsif bore
-          features.first[1] = r_cap_bot  # ecrase le rayon existant
-        end
-
-        # Cap z=L (meme logique)
-        r_cap_top = bore ? profile.r_minor : profile.radius_at(theta, length)
-        if chamfer
-          r_cap_top = bore ? apply_bore_chamfer(r_cap_top, length, length, profile.r_minor, pitch)
-                           : apply_chamfer(r_cap_top, length, length, profile.r_major, profile.r_minor, pitch)
+          r0 = profile.radius_at(theta, 0.0)
+          if chamfer
+            r0 = bore ? apply_bore_chamfer(r0, 0.0, length, profile.r_minor, pitch)
+                      : apply_chamfer(r0, 0.0, length, profile.r_major, profile.r_minor, pitch)
+          end
+          features.unshift([0.0, r0])
         end
         if features.empty? || features.last[0] < length - 1e-9
-          features.push([length, r_cap_top])
-        elsif bore
-          features.last[1] = r_cap_top
+          rl = profile.radius_at(theta, length)
+          if chamfer
+            rl = bore ? apply_bore_chamfer(rl, length, length, profile.r_minor, pitch)
+                      : apply_chamfer(rl, length, length, profile.r_major, profile.r_minor, pitch)
+          end
+          features.push([length, rl])
         end
 
         columns << features

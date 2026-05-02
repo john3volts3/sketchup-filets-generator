@@ -134,6 +134,34 @@ Création du plugin SketchUp `vis_filets_generator` — générateur paramétriq
 
 ---
 
+## Session du 2026-05-02 — Stabilisation v1.5.0
+
+### Corrections majeures
+
+**Écrou cassé (régression) — cause identifiée et résolue**
+- Symptôme : le filet de l'écrou ne parcourait pas toute la hauteur du trou, ou se refermait aux extrémités.
+- Cause racine : le "flat-face fix" (commit `fdc9b07`) écrasait les features hélicoïdales à z=0 et z=L de l'alésage avec `r_bore_min`. Cela supprimait les crêtes naturelles du filet en début/fin de hauteur.
+- Solution : restauration de `geometry.rb` et `profiles.rb` depuis le commit `592d925` (base propre) via `git checkout`. Seuls les ajouts approuvés ont été réappliqués (hauteurs séparées, min_core_ratio). Le flat-face fix a été entièrement supprimé.
+- La légère non-planarité des faces annulaires (conséquence) est acceptable, conformément à la décision du 2026-05-01.
+
+**Chanfrein — approche abandonnée, nouvelle stratégie définie**
+- Les tentatives de chanfrein par calcul direct dans `build_columns` ont causé des régressions en cascade (tige OK mais écrou cassé à chaque fois).
+- Nouvelle approche décidée pour la session suivante : **boolean subtract avec les outils Eneroth**.
+  - Tige : soustraire un "ring frustum" (cylindre avec cône creusé) positionné au sommet de la tige
+  - Écrou : soustraire un cône simple des deux faces de l'alésage
+  - Hauteur du chanfrein : 1 pas (valeur par défaut), configurable via paramètre dans le dialog
+
+### État v1.5.0 ✅
+
+- ✅ Tige ISO sans chanfrein — parfaite (imprimée et engranée)
+- ✅ Écrou ISO sans chanfrein — parfait (filet régulier de z=0 à z=L)
+- ✅ Profil plastique FDM (angle d'overhang + min core)
+- ✅ Hauteurs séparées tige/écrou, persistence des paramètres
+- ✅ Dialog en anglais, paramètres grisés si non applicables
+- ⏳ Chanfrein — à implémenter en session suivante (boolean Eneroth)
+
+---
+
 ## Session du 2026-05-01 (suite — v1.2.0)
 
 ### Nouvelles fonctionnalités
