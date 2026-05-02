@@ -1,8 +1,8 @@
 # Spécifications fonctionnelles détaillées (FSD)
 
 **Projet** : Plugin SketchUp `vis_filets_generator` — Générateur de filets paramétriques
-**Version** : 1.2.0
-**Date** : 2026-05-01
+**Version** : 1.6.0
+**Date** : 2026-05-02
 
 ---
 
@@ -24,9 +24,12 @@ Compatibilité : SketchUp 2014 à la version la plus récente.
 | 4 | Hauteur | Saisie numérique | mm dans l'unité du modèle |
 | 5 | Pièces | Checkboxes | ☑ Tige filetée  ☑ Écrou hexagonal (combinables) |
 | 6 | Gap | Saisie numérique | 0,3 mm défaut ISO ; 0,4 mm défaut plastique |
-| 7 | Chanfrein | Case à cocher | Non (défaut) |
+| 7 | Chanfrein d'entrée | Case à cocher + hauteur (mm) | Non (défaut) ; hauteur = 1 pas |
 | 8 | Segments/tour | Entier multiple de 6 | 24 (défaut) |
 | 9 | Angle / verticale (°) | Entier 10–85, visible si profil plastique | 60° |
+| 10 | Min. core (%D) | Entier, visible si profil plastique | 70% |
+
+Chaque mode (ISO / FDM) mémorise ses propres paramètres indépendamment — restaurés au switch de mode.
 
 Toutes les valeurs dimensionnelles sont dans l'**unité courante du modèle SketchUp** (mm, cm, m…).
 
@@ -39,10 +42,10 @@ Toutes les valeurs dimensionnelles sont dans l'**unité courante du modèle Sket
 - Filet externe hélicoïdal, axe Z, base à l'origine
 - Diamètre extérieur : D
 - Profil ISO : V 60°, fond = D/2 − 5H/8 (H = P√3/2)
-- Profil plastique : trapézoïdal 30°, profondeur 0,65P, plats crete/fond P/8
-- Vertices placés exactement aux transitions de profil (crêtes et fonds) — arêtes vives, pas de lissage
+- Profil plastique FDM : flancs à angle constant = `max_overhang_angle` (depuis la verticale). Si la profondeur théorique dépasse `r_major − r_minor_min` (contrainte min_core), le fond devient **plat** à `r_minor_min` (profil trapézoïdal) — l'angle ne change jamais.
+- Vertices placés exactement aux transitions de profil (crêtes, fonds, transitions flanc/plat) — arêtes vives, pas de lissage
 - Extrémités : faces plates (z=0 et z=hauteur)
-- Chanfrein (optionnel) : tronc de cône en haut uniquement, Lc=P, angle 45°
+- Chanfrein d'entrée (optionnel) : boolean subtract d'un ring frustum en haut de la tige (hauteur = `chamfer_height`, défaut = 1 pas)
 
 ### 3.2 Écrou hexagonal
 
@@ -52,9 +55,14 @@ Toutes les valeurs dimensionnelles sont dans l'**unité courante du modèle Sket
 - Même profil que la tige (ISO ou plastique)
 - Objet solide, zéro booléen — un seul `Geom::PolygonMesh`
 
+### 3.2 Écrou hexagonal — chanfrein
+
+- Chanfrein d'alésage (optionnel) : boolean subtract de deux frustums solides (z=0 et z=L), creusant le cône d'entrée de filet sur chaque face.
+- Compatible Pro (native `Group#subtract`) et non-Pro (Eneroth Solid Tools).
+
 ### 3.3 Génération simultanée
 
-Si tige + écrou cochés : générés côte à côte (décalage +2,5D en X).
+Si tige + écrou cochés : générés à l'**origine commune** (x=0). Pendant le chanfrein, l'écrou est temporairement décalé pour éviter les interférences booléennes avec la tige, puis ramené à x=0.
 
 ---
 
@@ -88,8 +96,7 @@ Pour chaque colonne angulaire i : z-positions placées exactement aux transition
 
 ## 5. Limitations connues
 
-- Chanfrein : géométrie correcte mais solidité non garantie (validation en cours)
-- Écrou : pas de chanfrein sur l'alésage (fermerait le trou)
+- Chanfrein booléen : fiable sur tige et écrou seuls ; intermittent résiduel possible sur certaines configurations SketchUp (géométrie dégénérée ou version SU ancienne)
 - Filet à droite uniquement
 - Pas de tête de boulon (vis hex DIN 933) — écrou DIN 934 uniquement
 - N_THETA doit être multiple de 6 (validé automatiquement dans le dialog)

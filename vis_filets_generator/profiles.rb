@@ -48,33 +48,57 @@ module VisFiletsGenerator
       end
     end
 
-    # Profil V optimise FDM — angle mesure depuis la VERTICALE (convention slicers FDM).
-    # depth = (P/2) * tan(angle_vertical)
-    # Plus l'angle vertical est grand, plus le flanc est incline et la profondeur grande.
-    # Cap a 0.9*P pour eviter des filets excessivement profonds.
-    # Exemples pour P=1.5mm (M10) :
-    #   60 deg (vertical) => depth = 1.30 mm  (30 deg depuis l'horizontale — imprimante standard)
-    #   45 deg (vertical) => depth = 0.75 mm  (45 deg — cas limite universel)
-    #   70 deg (vertical) => depth = 1.35 mm  (cap 0.9P=1.35mm — refroidissement excellent)
+    # Profil V ou trapezoidal FDM — angle mesure depuis la VERTICALE (convention slicers FDM).
+    # L'angle des flancs reste CONSTANT = max_overhang_angle, quel que soit le pitch.
+    # Si la profondeur theorique depasse (r_major - r_minor_min), le fond devient PLAT a r_minor_min
+    # (profil trapezoidale) plutot que de changer l'angle.
+    # Exemples pour P=1.5mm (M10), angle=60 deg :
+    #   depth theorique = 1.30 mm — si min_core >= r_major-1.30 : trapeze, sinon V pur
     class PlasticProfile < BaseProfile
       def initialize(r_major, pitch, r_minor = nil, max_overhang_deg = 60.0, min_core_ratio = 0.70)
+        angle_rad = [[max_overhang_deg.to_f, 5.0].max, 85.0].min * Math::PI / 180.0
+
         if r_minor.nil?
-          angle_rad   = [[max_overhang_deg.to_f, 5.0].max, 85.0].min * Math::PI / 180.0
-          depth       = (pitch.to_f / 2.0) * Math.tan(angle_rad)
+          depth_max   = (pitch.to_f / 2.0) * Math.tan(angle_rad)
           r_minor_min = r_major.to_f * [[min_core_ratio.to_f, 0.05].max, 0.95].min
-          r_minor     = [r_major.to_f - depth, r_minor_min].max
+          r_minor     = [r_major.to_f - depth_max, r_minor_min].max
         end
+
         super(r_major, r_minor, pitch)
-        @feature_phases = [[0.0, @r_major], [0.5, @r_minor]]
+
+        # f1 : fraction de pitch pour un flanc a l'angle fixe.
+        # Si f1 < 0.5 : profil trapezoidale (fond plat entre f1 et 1-f1).
+        # Si f1 = 0.5 : profil en V pur (angle atteint exactement r_minor).
+        depth_actual = @r_major - @r_minor
+        z_flank      = depth_actual / Math.tan(angle_rad)
+        @f1          = [z_flank / @pitch, 0.5].min
+
+        if @f1 < 0.5 - 1e-6
+          @feature_phases = [[0.0, @r_major], [@f1, @r_minor], [1.0 - @f1, @r_minor]]
+        else
+          @feature_phases = [[0.0, @r_major], [0.5, @r_minor]]
+        end
       end
 
       private
 
       def interpolate(f)
-        if f < 0.5
-          @r_major + (f / 0.5) * (@r_minor - @r_major)
+        if @f1 >= 0.5 - 1e-6
+          # V pur
+          if f < 0.5
+            @r_major + (f / 0.5) * (@r_minor - @r_major)
+          else
+            @r_minor + ((f - 0.5) / 0.5) * (@r_major - @r_minor)
+          end
         else
-          @r_minor + ((f - 0.5) / 0.5) * (@r_major - @r_minor)
+          # Trapeze : flancs a angle fixe, fond plat a r_minor
+          if f < @f1
+            @r_major + (f / @f1) * (@r_minor - @r_major)
+          elsif f <= 1.0 - @f1
+            @r_minor
+          else
+            @r_minor + ((f - (1.0 - @f1)) / @f1) * (@r_major - @r_minor)
+          end
         end
       end
     end

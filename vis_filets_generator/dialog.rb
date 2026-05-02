@@ -52,6 +52,24 @@ module VisFiletsGenerator
       </div>
 
       <div class="card">
+        <h3>Parts to create</h3>
+        <div class="check-row">
+          <label><input type="checkbox" id="create_tige" checked onchange="onCreateChange()"> Threaded rod &nbsp;(&#216; D)</label>
+        </div>
+        <div class="row sub-row" id="row_length_tige">
+          <div class="lbl">Rod height (mm)</div>
+          <input type="text" id="length_tige" value="50" min="0.1" step="1">
+        </div>
+        <div class="check-row" style="margin-top:6px">
+          <label><input type="checkbox" id="create_ecrou" onchange="onCreateChange()"> Hex nut &nbsp;(bore D + gap)</label>
+        </div>
+        <div class="row sub-row" id="row_length_ecrou">
+          <div class="lbl">Nut height (mm)</div>
+          <input type="text" id="length_ecrou" value="8" min="0.1" step="1">
+        </div>
+      </div>
+
+      <div class="card">
         <h3>Dimensions</h3>
         <div class="row" id="iso_preset_row">
           <div class="lbl">M size</div>
@@ -75,30 +93,16 @@ module VisFiletsGenerator
       </div>
 
       <div class="card">
-        <h3>Parts to create</h3>
-        <div class="check-row">
-          <label><input type="checkbox" id="create_tige" checked onchange="onCreateChange()"> Threaded rod &nbsp;(&#216; D)</label>
-        </div>
-        <div class="row sub-row" id="row_length_tige">
-          <div class="lbl">Rod height (mm)</div>
-          <input type="text" id="length_tige" value="50" min="0.1" step="1">
-        </div>
-        <div class="check-row" style="margin-top:6px">
-          <label><input type="checkbox" id="create_ecrou" onchange="onCreateChange()"> Hex nut &nbsp;(bore D + gap)</label>
-        </div>
-        <div class="row sub-row" id="row_length_ecrou">
-          <div class="lbl">Nut height (mm)</div>
-          <input type="text" id="length_ecrou" value="8" min="0.1" step="1">
-        </div>
-      </div>
-
-      <div class="card">
         <h3>Options</h3>
         <div class="row">
           <div class="lbl">Gap (mm)</div>
           <input type="text" id="gap" value="0.3" min="0" step="0.05">
         </div>
-        <div class="check-row"><label><input type="checkbox" id="chamfer"> Thread lead-in chamfer</label></div>
+        <div class="check-row"><label><input type="checkbox" id="chamfer" onchange="onChamferChange()"> Thread lead-in chamfer</label></div>
+        <div class="row dim" id="chamfer_height_row">
+          <div class="lbl">Chamfer height (mm)</div>
+          <input type="text" id="chamfer_height" value="1.5">
+        </div>
         <div class="row dim" id="max_angle_row">
           <div class="lbl">Max overhang angle (°)</div>
           <input type="text" id="max_overhang_angle" value="60"
@@ -128,6 +132,14 @@ module VisFiletsGenerator
 
       var SAVED = __SAVED_JSON__;
 
+      // Etat independant par mode — sauvegarde/restaure les params a chaque switch
+      var currentMode = 'iso';
+      var modeStates = {
+        iso:     { m_size:'M10', d:10,  pitch:1.5,  gap:0.3, chamfer_height:1.5 },
+        plastic: { d:10,         pitch:2.5, gap:0.4, chamfer_height:2.5,
+                   max_overhang_angle:60, min_core_pct:70 }
+      };
+
       function g(id){return document.getElementById(id);}
       function norm(v){return (v+'').replace(',','.');}
       function fv(id){return parseFloat(norm(g(id).value))||0;}
@@ -145,71 +157,100 @@ module VisFiletsGenerator
         return 'iso';
       }
 
+      function saveModeState(mode){
+        var s=modeStates[mode];
+        s.d=fv('d'); s.pitch=fv('pitch'); s.gap=fv('gap');
+        s.chamfer_height=fv('chamfer_height')||s.pitch;
+        if(mode==='iso'){
+          s.m_size=g('m_size').value;
+        } else {
+          s.max_overhang_angle=fv('max_overhang_angle')||60;
+          s.min_core_pct=fv('min_core_pct')||70;
+        }
+      }
+
+      function loadModeState(mode){
+        var s=modeStates[mode];
+        g('d').value=s.d; g('pitch').value=s.pitch; g('gap').value=s.gap;
+        g('chamfer_height').value=s.chamfer_height||s.pitch;
+        if(mode==='iso'){
+          g('m_size').value=s.m_size||'M10';
+        } else {
+          g('max_overhang_angle').value=s.max_overhang_angle||60;
+          g('min_core_pct').value=s.min_core_pct||70;
+        }
+      }
+
       function onCreateChange(){
         setDim('row_length_tige',  !g('create_tige').checked);
         setDim('row_length_ecrou', !g('create_ecrou').checked);
       }
 
+      function onChamferChange(){
+        setDim('chamfer_height_row', !g('chamfer').checked);
+      }
+
       function initForm(s){
         if(!s) return;
+        // Initialiser les etats par mode depuis les donnees sauvegardees
+        if(s.iso)     for(var k in s.iso)     modeStates.iso[k]=s.iso[k];
+        if(s.plastic) for(var k in s.plastic) modeStates.plastic[k]=s.plastic[k];
+        // Activer le bon mode
         if(s.profile_type!==undefined){
           var radios=document.getElementsByName('profile_type');
           for(var i=0;i<radios.length;i++) radios[i].checked=(radios[i].value===s.profile_type);
+          currentMode=s.profile_type;
         }
-        var isPlastic=(getProfileType()==='plastic');
+        var isPlastic=(currentMode==='plastic');
         setDim('iso_preset_row', isPlastic);
         setDim('max_angle_row',  !isPlastic);
         setDim('min_core_row',   !isPlastic);
-        if(s.m_size!==undefined)        g('m_size').value=s.m_size;
-        if(s.d!==undefined)             g('d').value=s.d;
-        if(s.pitch!==undefined)         g('pitch').value=s.pitch;
-        if(s.length_tige!==undefined)   g('length_tige').value=s.length_tige;
-        if(s.length_ecrou!==undefined)  g('length_ecrou').value=s.length_ecrou;
-        if(s.create_tige!==undefined)   g('create_tige').checked=s.create_tige;
-        if(s.create_ecrou!==undefined)  g('create_ecrou').checked=s.create_ecrou;
-        if(s.gap!==undefined)           g('gap').value=s.gap;
-        if(s.chamfer!==undefined)              g('chamfer').checked=s.chamfer;
-        if(s.n_theta!==undefined)              g('n_theta').value=s.n_theta;
-        if(s.max_overhang_angle!==undefined)   g('max_overhang_angle').value=s.max_overhang_angle;
-        if(s.min_core_pct!==undefined)         g('min_core_pct').value=s.min_core_pct;
+        // Charger les params du mode actif
+        loadModeState(currentMode);
+        // Params independants du mode
+        if(s.create_tige!==undefined)  g('create_tige').checked=s.create_tige;
+        if(s.create_ecrou!==undefined) g('create_ecrou').checked=s.create_ecrou;
+        if(s.length_tige!==undefined)  g('length_tige').value=s.length_tige;
+        if(s.length_ecrou!==undefined) g('length_ecrou').value=s.length_ecrou;
+        if(s.chamfer!==undefined)      g('chamfer').checked=s.chamfer;
+        if(s.n_theta!==undefined)      g('n_theta').value=s.n_theta;
         onCreateChange();
+        onChamferChange();
         updateHint();
         updateAngleHint();
       }
 
       function updateAngleHint(){
-        if(getProfileType()!=='plastic'){g('angle_hint').textContent='';return;}
         var pitch=fv('pitch')||1.5;
         var angle=fv('max_overhang_angle')||60;
         var d=(pitch/2)*Math.tan(angle*Math.PI/180);
-        g('angle_hint').textContent='depth: '+d.toFixed(3)+' mm';
+        var isPlastic=(currentMode==='plastic');
+        var el=g('angle_hint');
+        el.textContent='depth: '+d.toFixed(3)+' mm';
+        el.style.opacity=isPlastic?'1':'0.3';
         updateCoreHint();
       }
 
       function updateCoreHint(){
-        if(getProfileType()!=='plastic'){g('core_hint').textContent='';return;}
         var D=fv('d')||10, pct=fv('min_core_pct')||70;
         var r_maj=D/2, r_min=r_maj*pct/100;
         var pitch=fv('pitch')||1.5, angle=fv('max_overhang_angle')||60;
         var depth_req=(pitch/2)*Math.tan(angle*Math.PI/180);
         var clamped=depth_req>(r_maj-r_min);
-        g('core_hint').textContent='core: '+(2*r_min).toFixed(2)+'mm'+(clamped?' ⚠ clamped':'');
+        var isPlastic=(currentMode==='plastic');
+        var el=g('core_hint');
+        el.textContent='core: '+(2*r_min).toFixed(2)+'mm'+(clamped?' ⚠ clamped':'');
+        el.style.opacity=isPlastic?'1':'0.3';
       }
 
       function onProfileChange(){
-        var t=getProfileType(), isPlastic=(t==='plastic');
+        saveModeState(currentMode);
+        currentMode=getProfileType();
+        var isPlastic=(currentMode==='plastic');
         setDim('iso_preset_row', isPlastic);
         setDim('max_angle_row',  !isPlastic);
         setDim('min_core_row',   !isPlastic);
-        if(t==='plastic'){
-          var d=fv('d')||10;
-          g('pitch').value=(0.25*d).toFixed(2);
-          g('gap').value='0.40';
-          g('m_size').value='custom';
-        } else {
-          g('gap').value='0.30';
-          onMSize();
-        }
+        loadModeState(currentMode);
         updateHint();
         updateAngleHint();
       }
@@ -219,11 +260,12 @@ module VisFiletsGenerator
         if(!ISO[m])return;
         g('d').value=ISO[m].d;
         g('pitch').value=ISO[m].p;
+        g('chamfer_height').value=ISO[m].p;
         updateHint();
       }
 
       function onDChange(){
-        if(getProfileType()==='plastic'){
+        if(currentMode==='plastic'){
           var d=fv('d')||10;
           g('pitch').value=(0.25*d).toFixed(2);
         } else {
@@ -259,14 +301,18 @@ module VisFiletsGenerator
         if(tige&&lt<=0){g('err').textContent='Invalid rod height.';return;}
         if(ecrou&&le<=0){g('err').textContent='Invalid nut height.';return;}
         if(gap<0){g('err').textContent='Invalid gap.';return;}
+        saveModeState(currentMode);
         var p={
-          profile_type:getProfileType(),
+          profile_type:currentMode,
+          iso:modeStates.iso,
+          plastic:modeStates.plastic,
           m_size:g('m_size').value,
           d:d, pitch:pitch,
           length_tige:lt, length_ecrou:le,
           create_tige:tige, create_ecrou:ecrou,
           gap:gap,
           chamfer:g('chamfer').checked,
+          chamfer_height:fv('chamfer_height')||pitch||1.5,
           n_theta:nth,
           max_overhang_angle:fv('max_overhang_angle')||60,
           min_core_pct:fv('min_core_pct')||70
@@ -279,6 +325,11 @@ module VisFiletsGenerator
         }
       }
 
+      window.addEventListener('resize', function(){
+        var s=window.innerWidth+'x'+window.innerHeight;
+        if(typeof sketchup!=='undefined') sketchup.log_size(s);
+        else window.location='skp:log_size@'+s;
+      });
       window.onload = function(){ initForm(SAVED); };
       </script>
       </body>
@@ -289,25 +340,45 @@ module VisFiletsGenerator
     # Persistance des parametres (registre SketchUp)
     # -------------------------------------------------------------------------
     def self.read_defaults
+      iso_pitch = Sketchup.read_default(PREF_KEY, 'iso_pitch', 1.5).to_f
+      fdm_pitch = Sketchup.read_default(PREF_KEY, 'plastic_pitch', 2.5).to_f
       {
-        'profile_type'       => Sketchup.read_default(PREF_KEY, 'profile_type',       'iso'),
-        'm_size'             => Sketchup.read_default(PREF_KEY, 'm_size',             'M10'),
-        'd'                  => Sketchup.read_default(PREF_KEY, 'd',                  10.0).to_f,
-        'pitch'              => Sketchup.read_default(PREF_KEY, 'pitch',              1.5).to_f,
-        'length_tige'        => Sketchup.read_default(PREF_KEY, 'length_tige',        50.0).to_f,
-        'length_ecrou'       => Sketchup.read_default(PREF_KEY, 'length_ecrou',       8.0).to_f,
-        'create_tige'        => Sketchup.read_default(PREF_KEY, 'create_tige',        true),
-        'create_ecrou'       => Sketchup.read_default(PREF_KEY, 'create_ecrou',       false),
-        'gap'                => Sketchup.read_default(PREF_KEY, 'gap',                0.3).to_f,
-        'chamfer'            => Sketchup.read_default(PREF_KEY, 'chamfer',            false),
-        'n_theta'            => Sketchup.read_default(PREF_KEY, 'n_theta',            24).to_i,
-        'max_overhang_angle' => Sketchup.read_default(PREF_KEY, 'max_overhang_angle', 60.0).to_f,
-        'min_core_pct'       => Sketchup.read_default(PREF_KEY, 'min_core_pct',       70.0).to_f,
+        'profile_type' => Sketchup.read_default(PREF_KEY, 'profile_type', 'iso'),
+        'create_tige'  => Sketchup.read_default(PREF_KEY, 'create_tige',  true),
+        'create_ecrou' => Sketchup.read_default(PREF_KEY, 'create_ecrou', false),
+        'length_tige'  => Sketchup.read_default(PREF_KEY, 'length_tige',  50.0).to_f,
+        'length_ecrou' => Sketchup.read_default(PREF_KEY, 'length_ecrou', 8.0).to_f,
+        'chamfer'      => Sketchup.read_default(PREF_KEY, 'chamfer',      false),
+        'n_theta'      => Sketchup.read_default(PREF_KEY, 'n_theta',      24).to_i,
+        'iso' => {
+          'm_size'         => Sketchup.read_default(PREF_KEY, 'iso_m_size',         'M10'),
+          'd'              => Sketchup.read_default(PREF_KEY, 'iso_d',              10.0).to_f,
+          'pitch'          => iso_pitch,
+          'gap'            => Sketchup.read_default(PREF_KEY, 'iso_gap',            0.3).to_f,
+          'chamfer_height' => Sketchup.read_default(PREF_KEY, 'iso_chamfer_height', iso_pitch).to_f,
+        },
+        'plastic' => {
+          'd'                  => Sketchup.read_default(PREF_KEY, 'plastic_d',                  10.0).to_f,
+          'pitch'              => fdm_pitch,
+          'gap'                => Sketchup.read_default(PREF_KEY, 'plastic_gap',               0.4).to_f,
+          'chamfer_height'     => Sketchup.read_default(PREF_KEY, 'plastic_chamfer_height',    fdm_pitch).to_f,
+          'max_overhang_angle' => Sketchup.read_default(PREF_KEY, 'plastic_max_overhang_angle',60.0).to_f,
+          'min_core_pct'       => Sketchup.read_default(PREF_KEY, 'plastic_min_core_pct',      70.0).to_f,
+        },
       }
     end
 
     def self.save_defaults(params)
-      params.each { |k, v| Sketchup.write_default(PREF_KEY, k, v) }
+      %w[profile_type create_tige create_ecrou length_tige length_ecrou
+         chamfer n_theta].each do |k|
+        Sketchup.write_default(PREF_KEY, k, params[k]) if params.key?(k)
+      end
+      if params['iso'].is_a?(Hash)
+        params['iso'].each { |k, v| Sketchup.write_default(PREF_KEY, "iso_#{k}", v) }
+      end
+      if params['plastic'].is_a?(Hash)
+        params['plastic'].each { |k, v| Sketchup.write_default(PREF_KEY, "plastic_#{k}", v) }
+      end
     end
 
     def self.build_html(defs)
@@ -325,8 +396,8 @@ module VisFiletsGenerator
       dlg = UI::HtmlDialog.new(
         dialog_title:    DIALOG_TITLE,
         preferences_key: 'VFGDialog',
-        width:  340,
-        height: 660,
+        width:  360,
+        height: 620,
         min_width:  300,
         min_height: 400,
         style: UI::HtmlDialog::STYLE_DIALOG
@@ -335,11 +406,14 @@ module VisFiletsGenerator
       dlg.add_action_callback('generate') do |_ctx, json_str|
         handle_generate(json_str)
       end
+      dlg.add_action_callback('log_size') do |_ctx, dims|
+        puts "[VFG] Dialog content size: #{dims}"
+      end
       dlg.show
     end
 
     def self.show_web_dialog
-      dlg = UI::WebDialog.new(DIALOG_TITLE, false, 'VFGDialog', 340, 700, 100, 100, true)
+      dlg = UI::WebDialog.new(DIALOG_TITLE, false, 'VFGDialog', 360, 620, 100, 100, true)
       dlg.set_html(build_html(read_defaults))
       dlg.add_action_callback('generate') do |_dlg, encoded|
         begin

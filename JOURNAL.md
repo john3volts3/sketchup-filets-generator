@@ -212,6 +212,47 @@ Création du plugin SketchUp `vis_filets_generator` — générateur paramétriq
 - Plugin livré dans `P:\develop\2026\claude\sketchup-filets\`
 - Copié dans `%APPDATA%\SketchUp\SketchUp 2021\SketchUp\Plugins\`
 
+---
+
+## Session du 2026-05-02 — v1.6.0
+
+### Chanfrein par boolean subtract (fonctionnalité principale)
+
+**`geometry.rb`** — implémentation complète :
+
+- `solid_subtract(model, target, tool)` : helper portable Pro/Eneroth. Native SU : `tool.subtract(target)` (receiver = cutter). Eneroth : `Eneroth::SolidTools.subtract(target, tool)`. Les deux outils fonctionnent en sens contraires.
+- `apply_chamfer_rod` : ring frustum (A=r_major/z_bot, B=r_outer/z_bot, C=r_outer/z_top, D=r_minor/z_top) soustrait de la tige. Enveloppé dans `start_operation`/`commit_operation`. Sur échec : `tool.erase!` + `abort_operation`.
+- `apply_chamfer_nut` : deux frustums solides (z=0 et z=L). Cones étendus de ±ε en z et r pour éviter faces coplanaires/tangentes avec l'écrou. Même gestion d'erreur que rod.
+- `generate` : l'écrou est généré à `x_off = d×2.5+gap` (séparé du rod) pendant toute la génération et le chanfrein, puis déplacé à x=0 — élimine l'interférence booléenne intermittente quand rod+nut sont au même point.
+- `make_profile_custom` : paramètre `max_overhang_deg` ajouté et transmis à `PlasticProfile` — corrige l'angle du filet de l'écrou FDM (était 60° par défaut au lieu de l'angle utilisateur).
+
+### Profil plastique FDM — fond plat (correction)
+
+**`profiles.rb`** — `PlasticProfile` :
+
+- L'angle des flancs est désormais **constant** = `max_overhang_angle`, quel que soit le pitch.
+- Calcul `f1 = min(z_flank / pitch, 0.5)` où `z_flank = (r_major − r_minor) / tan(angle)`.
+- Si `f1 < 0.5` : profil trapézoïdal — fond plat à `r_minor_min` entre les phases `f1` et `1−f1`.
+- Si `f1 = 0.5` : profil V pur (comportement précédent).
+- `feature_phases` adapté pour placer les vertices aux transitions flanc/plat.
+
+### Dialog — améliorations UI
+
+**`dialog.rb`** :
+
+- **Ordre des cards** : "Parts to create" déplacé avant "Dimensions".
+- **Hints toujours visibles** : `angle_hint` et `core_hint` toujours rendus (texte grisé en mode ISO, plein en plastique) — plus de layout shift.
+- **Debug resize** : listener `window.addEventListener('resize')` → callback Ruby `log_size` → `puts "[VFG] Dialog content size: WxH"`.
+- **Mémoire par mode** : `modeStates = { iso: {...}, plastic: {...} }`. `onProfileChange()` sauvegarde l'ancien mode et restaure le nouveau — aucun paramètre perdu au switch. Persistance entre sessions via clés préfixées (`iso_d`, `plastic_pitch`…) dans le registre SketchUp.
+- **Taille fenêtre** : 360×620 px.
+
+### Fichiers modifiés
+- `vis_filets_generator/geometry.rb`
+- `vis_filets_generator/profiles.rb`
+- `vis_filets_generator/dialog.rb`
+
+---
+
 ## Sources et références utilisées
 
 - ISO 261:1998 — *ISO general purpose metric screw threads — General plan*
