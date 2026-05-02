@@ -28,9 +28,11 @@ Menu **Extensions → Vis & Filets → Generate…**
 | 5 | **Rod height** | Length of the threaded rod |
 | 6 | **Nut height** | Height of the hex nut |
 | 7 | **Gap** | Radial clearance added to nut bore (default 0.3 mm ISO / 0.4 mm plastic) |
-| 8 | **Chamfer** | 45° thread lead-in chamfer on rod (top only) and nut (both faces) |
-| 9 | **Segments / turn** | Angular resolution, multiple of 6 (default 24) |
-| 10 | **Max overhang angle** | FDM plastic only — angle from vertical (default 60°) |
+| 8 | **Chamfer** | Thread lead-in chamfer on rod (top) and nut (both faces) — boolean subtract |
+| 9 | **Chamfer height** | Chamfer axial height (default = 1 pitch), visible when chamfer is checked |
+| 10 | **Segments / turn** | Angular resolution, multiple of 6 (default 24) |
+| 11 | **Max overhang angle** | FDM plastic only — flank angle from vertical (default 60°) |
+| 12 | **Min. core %D** | FDM plastic only — minimum core diameter as % of D (default 70%) |
 
 > **Units**: all values are entered in the current SketchUp model unit. If the model is in metres, entering `10` generates a 10-metre diameter thread.
 
@@ -40,14 +42,18 @@ Menu **Extensions → Vis & Filets → Generate…**
 Standard 60° V-profile per ISO 261 / ISO 724. Vertices placed exactly at crests and roots — sharp edges, no mesh smoothing.
 
 ### FDM plastic optimised
-V-profile with depth derived from the max overhang angle:
+Flank angle is **always constant** = `max_overhang_angle` regardless of pitch. Thread depth:
 `depth = (P/2) × tan(angle_from_vertical)`
+
+If the computed depth would bring the root below `min_core`, a **flat root** is used instead (trapezoidal profile) — the angle never changes, only the flat width grows.
 
 | Angle (from vertical) | Depth M10 (P=1.5mm) | From horizontal |
 |---|---|---|
 | 45° | 0.75 mm | 45° — universal limit |
 | 60° | 1.30 mm | 30° — standard printer |
 | 70° | 2.06 mm | 20° — good cooling |
+
+Each mode (ISO / FDM) remembers its own parameters independently — restored on mode switch.
 
 ## Hex nut
 
@@ -58,9 +64,10 @@ Generated as a single `PolygonMesh` with no booleans:
 
 ## Thread lead-in chamfer
 
-45° truncated cone, length = 1 pitch:
-- **Rod**: top face only. `min(r, cone_r)` — cone clips crests progressively, roots preserved until consumed.
-- **Nut**: both faces. `max(r, r_chamfer)` — exact mirror of rod chamfer, bore opens outward.
+Boolean subtract, height = `chamfer_height` (default 1 pitch):
+- **Rod**: ring frustum subtracted from the top — crests taper to root radius over the chamfer height.
+- **Nut**: two solid frustums subtracted from top and bottom faces — bore opens conically on entry.
+- Requires SketchUp Pro (native Solid Tools) or the **Eneroth Solid Tools** plugin (free, SketchUp Make compatible). Detected automatically.
 
 ## Technical notes
 
@@ -124,9 +131,11 @@ Menu **Extensions → Vis & Filets → Generate…**
 | 5 | **Hauteur tige** | Longueur de la tige filetée |
 | 6 | **Hauteur écrou** | Hauteur de l'écrou hexagonal |
 | 7 | **Gap** | Jeu radial ajouté à l'alésage de l'écrou (défaut 0,3 mm ISO / 0,4 mm plastique) |
-| 8 | **Chanfrein** | Chanfrein d'entrée 45° sur la tige (haut) et l'écrou (deux côtés) |
-| 9 | **Segments/tour** | Résolution angulaire, multiple de 6 (défaut 24) |
-| 10 | **Angle overhang max** | Plastique FDM uniquement — angle depuis la verticale (défaut 60°) |
+| 8 | **Chanfrein** | Chanfrein d'entrée sur la tige (haut) et l'écrou (deux côtés) — boolean subtract |
+| 9 | **Hauteur chanfrein** | Hauteur axiale du chanfrein (défaut = 1 pas), visible si chanfrein coché |
+| 10 | **Segments/tour** | Résolution angulaire, multiple de 6 (défaut 24) |
+| 11 | **Angle overhang max** | Plastique FDM uniquement — angle flanc depuis la verticale (défaut 60°) |
+| 12 | **Min. core %D** | Plastique FDM uniquement — diamètre noyau minimum en % de D (défaut 70%) |
 
 > **Unité** : toutes les valeurs sont saisies dans l'unité courante du modèle SketchUp. Si le modèle est en mètres, taper `10` génère un filet de 10 mètres de diamètre.
 
@@ -136,13 +145,16 @@ Menu **Extensions → Vis & Filets → Generate…**
 Profil en V 60° conforme ISO 261 / ISO 724. Vertices placés exactement aux crêtes et fonds.
 
 ### Plastique FDM optimisé
-Profil en V avec profondeur dérivée de l'angle d'overhang max :
+L'angle des flancs est **toujours constant** = `max_overhang_angle`, quel que soit le pas. Si la profondeur théorique dépasse la contrainte `min_core`, un **fond plat** est utilisé (profil trapézoïdal) — l'angle ne change jamais.
 `profondeur = (P/2) × tan(angle_depuis_verticale)`
+
+Chaque mode (ISO / Plastique) mémorise ses propres paramètres — restaurés au changement de mode.
 
 ## Limitations connues
 
 - Filet à droite uniquement
 - Pas de tête de vis (DIN 933) — écrou DIN 934 uniquement
+- Chanfrein : nécessite SketchUp Pro ou le plugin **Eneroth Solid Tools**
 - Profil plastique : à valider selon le matériau et l'imprimante
 
 ## Fichiers de référence (prototype initial)
