@@ -20,20 +20,20 @@ module VisFiletsGenerator
     # Point d'entree
     # =========================================================================
     def self.generate(params, model)
-      d   = params['d'].to_f
-      gap = params['gap'].to_f
-      uf  = unit_factor
+      d     = params['d'].to_f
+      gap   = params['gap'].to_f
+      pitch = params['pitch'].to_f
+      nth   = params['n_theta'].to_i
+      uf    = unit_factor
       tige_group  = nil
       ecrou_group = nil
 
-      # L'ecrou est genere en dehors du rod (x_off) pour eviter la superposition
-      # pendant les operations boolennes de chanfrein. Il sera ramene a x=0 ensuite.
       x_off_ecrou = (params['create_tige'] && params['create_ecrou']) ? (d * 2.5 + gap) : 0.0
 
       model.start_operation('Vis & Filets', true)
       begin
-        tige_group  = generate_tige(params, model, 0.0)         if params['create_tige']
-        ecrou_group = generate_ecrou(params, model, x_off_ecrou) if params['create_ecrou']
+        tige_group  = generate_tige(params, model, 0.0)          if params['create_tige']
+        ecrou_group = generate_ecrou(params, model, x_off_ecrou)  if params['create_ecrou']
         model.commit_operation
       rescue => e
         model.abort_operation
@@ -44,29 +44,32 @@ module VisFiletsGenerator
         return
       end
 
-      if params['chamfer']
-        pitch = params['pitch'].to_f
-        lc    = params.fetch('chamfer_height', pitch).to_f
-        nth   = params['n_theta'].to_i
+      max_angle      = params.fetch('max_overhang_angle', 45.0).to_f
+      min_core_ratio = params.fetch('min_core_pct', 70.0).to_f / 100.0
+      lc             = params.fetch('chamfer_height', pitch).to_f
 
-        if tige_group
-          length         = params.fetch('length_tige', params.fetch('length', 50.0)).to_f
-          max_angle      = params.fetch('max_overhang_angle', 45.0).to_f
-          min_core_ratio = params.fetch('min_core_pct', 70.0).to_f / 100.0
-          profile        = make_profile(params['profile_type'], d / 2.0, pitch, max_angle, min_core_ratio)
-          tige_group     = apply_chamfer_rod(model, tige_group, profile.r_major, profile.r_minor,
-                                             lc, length, 0.0, nth, uf)
+      if tige_group
+        length_tige  = params.fetch('length_tige', params.fetch('length', 50.0)).to_f
+        tige_profile = make_profile(params['profile_type'], d / 2.0, pitch, max_angle, min_core_ratio)
+
+        if params['chamfer']
+          tige_group = apply_chamfer_rod(model, tige_group, tige_profile.r_major, tige_profile.r_minor,
+                                         lc, length_tige, 0.0, nth, uf)
         end
 
-        if ecrou_group
-          length         = params.fetch('length_ecrou', params.fetch('length', 8.0)).to_f
-          max_angle      = params.fetch('max_overhang_angle', 45.0).to_f
-          min_core_ratio = params.fetch('min_core_pct', 70.0).to_f / 100.0
-          profile        = make_profile(params['profile_type'], d / 2.0, pitch, max_angle, min_core_ratio)
-          r_bore_min     = profile.r_minor + gap
-          ecrou_group    = apply_chamfer_nut(model, ecrou_group, r_bore_min, lc, length,
-                                             x_off_ecrou, nth, uf)
+      end
+
+      if ecrou_group
+        length_ecrou  = params.fetch('length_ecrou', params.fetch('length', 8.0)).to_f
+        ecrou_profile = make_profile(params['profile_type'], d / 2.0, pitch, max_angle, min_core_ratio)
+
+        if params['chamfer']
+          r_bore_min  = ecrou_profile.r_minor + gap
+          ecrou_group = apply_chamfer_nut(model, ecrou_group, r_bore_min, lc, length_ecrou,
+                                          x_off_ecrou, nth, uf)
         end
+
+        cleanup_coplanar_edges(ecrou_group.entities) if ecrou_group&.valid?
       end
 
       # Ramener l'ecrou a l'origine apres chanfrein
@@ -511,10 +514,23 @@ module VisFiletsGenerator
       end
     end
 
+    # Masque les aretes entre faces coplanaires (smooth+soft+hidden).
+    # N'efface pas les aretes pour eviter la perte de faces sur certaines geometries (M5, M12).
+    def self.cleanup_coplanar_edges(entities)
+      entities.grep(Sketchup::Edge).each do |e|
+        next unless e.faces.length == 2
+        next unless e.faces[0].normal.parallel?(e.faces[1].normal)
+        e.smooth = true
+        e.soft   = true
+        e.hidden = true
+      end
+    end
+
+
     private_class_method :unit_factor, :compute_scale,
                          :make_profile, :make_profile_custom,
                          :build_columns, :apply_chamfer_rod, :apply_chamfer_nut,
-                         :solid_subtract,
+                         :solid_subtract, :cleanup_coplanar_edges,
                          :pad_columns!, :build_verts, :add_center_lines_scaled, :format_name
 
   end

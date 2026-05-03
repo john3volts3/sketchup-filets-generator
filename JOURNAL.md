@@ -253,6 +253,35 @@ Création du plugin SketchUp `vis_filets_generator` — générateur paramétriq
 
 ---
 
+## Session du 2026-05-03 — v1.7.0
+
+### Chanfrein écrou — outil sablier unique (fix définitif)
+
+**`geometry.rb`** — `apply_chamfer_nut` réécrite :
+
+- Remplace les deux booleans chaînés (un par face) par un **seul outil sablier** : cone_bas + cylindre_central + cone_haut, en un seul `PolygonMesh`.
+- Le cylindre central (r < r_bore_min) traverse l'alésage sans toucher le filet → la soustraction en une opération applique les deux chanfreins simultanément.
+- Élimine l'échec intermittent sur M5 (et M4/M6 occasionnel) causé par le résultat du premier boolean non reconnu comme solide valide par SketchUp pour le deuxième.
+- Guard ajouté : si `lc > L/2`, le chanfrein est ignoré avec message.
+- Validé sur M3 à M10.
+
+### Nettoyage visuel et repères de centre
+
+**`geometry.rb`** — nouvelles fonctions :
+
+- `cleanup_coplanar_edges(entities)` : masque (smooth+soft+hidden) les arêtes entre faces coplanaires. Appliqué **uniquement au nut** — le rod garde ses lignes naturelles de triangulation qui servent de repère de centre.
+- Le rod conserve les rayons du cap fan (autant que segments/tour), qui passent par le centre géométrique des deux faces circulaires.
+
+### Restructuration de `generate`
+
+- Profil tige et écrou toujours calculés (plus uniquement si chanfrein).
+- Chanfrein, cleanup et centre gérés en séquence explicite pour tige et écrou.
+
+### Fichiers modifiés
+- `vis_filets_generator/geometry.rb`
+
+---
+
 ## Sources et références utilisées
 
 - ISO 261:1998 — *ISO general purpose metric screw threads — General plan*

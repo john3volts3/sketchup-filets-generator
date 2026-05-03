@@ -1,8 +1,8 @@
 # Spécifications fonctionnelles détaillées (FSD)
 
 **Projet** : Plugin SketchUp `vis_filets_generator` — Générateur de filets paramétriques
-**Version** : 1.6.0
-**Date** : 2026-05-02
+**Version** : 1.7.0
+**Date** : 2026-05-03
 
 ---
 
@@ -96,7 +96,7 @@ Pour chaque colonne angulaire i : z-positions placées exactement aux transition
 
 ## 5. Limitations connues
 
-- Chanfrein booléen : fiable sur tige et écrou seuls ; intermittent résiduel possible sur certaines configurations SketchUp (géométrie dégénérée ou version SU ancienne)
+- Chanfrein booléen : fiable sur toute la gamme M3–M20, tige et écrou (validé M3–M10)
 - Filet à droite uniquement
 - Pas de tête de boulon (vis hex DIN 933) — écrou DIN 934 uniquement
 - N_THETA doit être multiple de 6 (validé automatiquement dans le dialog)
