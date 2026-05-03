@@ -78,7 +78,10 @@ module VisFiletsGenerator
             <option value="M5">M5</option><option value="M6">M6</option>
             <option value="M8">M8</option><option value="M10" selected>M10</option>
             <option value="M12">M12</option><option value="M16">M16</option>
-            <option value="M20">M20</option><option value="custom">Custom</option>
+            <option value="M20">M20</option><option value="M22">M22</option>
+            <option value="M24">M24</option><option value="M27">M27</option>
+            <option value="M30">M30</option><option value="M32">M32</option>
+            <option value="custom">Custom</option>
           </select>
         </div>
         <div class="row">
@@ -128,7 +131,8 @@ module VisFiletsGenerator
       <script>
       var ISO={M3:{d:3,p:0.5},M4:{d:4,p:0.7},M5:{d:5,p:0.8},M6:{d:6,p:1.0},
                M8:{d:8,p:1.25},M10:{d:10,p:1.5},M12:{d:12,p:1.75},
-               M16:{d:16,p:2.0},M20:{d:20,p:2.5}};
+               M16:{d:16,p:2.0},M20:{d:20,p:2.5},M22:{d:22,p:2.5},
+               M24:{d:24,p:3.0},M27:{d:27,p:3.0},M30:{d:30,p:3.5},M32:{d:32,p:3.5}};
 
       var SAVED = __SAVED_JSON__;
 
@@ -148,7 +152,7 @@ module VisFiletsGenerator
       function setDim(id, v){
         var el=g(id); if(!el)return;
         el.style.opacity=v?'0.38':'1';
-        el.style.pointerEvents=v?'none':'';
+        el.style.pointerEvents=v?'none':'auto';
       }
 
       function getProfileType(){
@@ -176,6 +180,7 @@ module VisFiletsGenerator
         if(mode==='iso'){
           g('m_size').value=s.m_size||'M10';
         } else {
+          g('m_size').value='custom';
           g('max_overhang_angle').value=s.max_overhang_angle||60;
           g('min_core_pct').value=s.min_core_pct||70;
         }

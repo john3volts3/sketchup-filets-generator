@@ -282,6 +282,47 @@ Création du plugin SketchUp `vis_filets_generator` — générateur paramétriq
 
 ---
 
+## Session du 2026-05-03 (suite) — v1.8.0
+
+### Nouvelle stratégie de génération de l'écrou (geometry.rb)
+
+- `generate_ecrou` réécrit : **prisme hex plein − bore rod** (boolean subtract)
+- `generate_hex_prism` : prisme hexagonal propre (6 sommets/ring, aucun filet)
+- `generate_tige` refactorisé : accepte `profile_override` et `length_override` pour réutilisation comme bore rod
+- Bore rod s'étend de `ext_bot=0,01` sous z=0 et `ext_top=0,5` au-dessus → coupes nettes, déphasage minimal
+- Élimine les arêtes/faces parasites présentes dans l'ancienne génération all-in-one
+
+### Chanfrein écrou — outil sablier (geometry.rb)
+
+- Outil sablier unique (cone + cylindre + cone) en un seul boolean
+- Plus de chaînage → fiable sur M3–M12 (validé), élimine l'erreur intermittente M5
+- ext = 1 pitch de chaque côté pour garantir la coupe propre
+
+### Table ISO étendue M3–M32 (presets.rb + dialog.rb)
+
+- Ajout M22, M24, M27, M30, M32 avec valeurs DIN 934 (s_flat, pitch, hauteur)
+- Dropdown dialog mis à jour avec les nouvelles tailles
+- Table JS synchronisée
+
+### Hex FDM : taille dynamique selon D (geometry.rb)
+
+- Mode FDM (m_size='custom') : ISO de taille ≥ D le plus proche, sinon 2×D
+- Avant : toujours M6 (valeur sauvegardée figée)
+
+### Fix dialog — champs toujours non-cliquables (dialog.rb)
+
+- Bug : `setDim(id, false)` mettait `pointerEvents=''` → CSS class `.dim` reprenait
+- Fix : `pointerEvents='auto'` (une lettre, un mot de plus)
+- Affecte : Chamfer height, Max overhang angle, Min. core %D
+
+### Fichiers modifiés
+- `vis_filets_generator/geometry.rb`
+- `vis_filets_generator/presets.rb`
+- `vis_filets_generator/dialog.rb`
+- `README.md`, `FSD.md`
+
+---
+
 ## Sources et références utilisées
 
 - ISO 261:1998 — *ISO general purpose metric screw threads — General plan*

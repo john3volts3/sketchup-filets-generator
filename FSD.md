@@ -1,7 +1,7 @@
 # Spécifications fonctionnelles détaillées (FSD)
 
 **Projet** : Plugin SketchUp `vis_filets_generator` — Générateur de filets paramétriques
-**Version** : 1.7.0
+**Version** : 1.8.0
 **Date** : 2026-05-03
 
 ---
@@ -19,7 +19,7 @@ Compatibilité : SketchUp 2014 à la version la plus récente.
 | # | Paramètre | Type | Valeurs / défaut |
 |---|-----------|------|-----------------|
 | 1 | Profil | Radio | ISO métrique / Optimisé plastique FDM |
-| 2 | D (diamètre nominal) | Dropdown + saisie libre | M3–M20 (ISO) ; saisie libre (FDM) |
+| 2 | D (diamètre nominal) | Dropdown + saisie libre | M3–M32 (ISO) ; saisie libre (FDM) |
 | 3 | Pas P | Saisie numérique | Auto-rempli depuis table ISO ou 0,25×D (FDM), toujours éditable |
 | 4 | Hauteur | Saisie numérique | mm dans l'unité du modèle |
 | 5 | Pièces | Checkboxes | ☑ Tige filetée  ☑ Écrou hexagonal (combinables) |
@@ -49,16 +49,22 @@ Toutes les valeurs dimensionnelles sont dans l'**unité courante du modèle Sket
 
 ### 3.2 Écrou hexagonal
 
-- Filet interne, alésage D + gap
-- Forme extérieure : prisme hexagonal DIN 934 (S depuis table M3–M20 ou 1,75×D)
+Généré par **boolean subtract** (prisme hex plein − bore rod) :
 - Hauteur = paramètre Hauteur
-- Même profil que la tige (ISO ou plastique)
-- Objet solide, zéro booléen — un seul `Geom::PolygonMesh`
+- Même profil de filet que la tige (ISO ou plastique), gap appliqué au rayon
+- Bore rod s'étend de 0,01 unité sous z=0 et 0,5 unité au-dessus de z=L → coupes parfaitement nettes
+- Solide watertight sans arêtes parasites
+
+**Taille hex (travers-plats s_flat) :**
+- Preset ISO M3–M32 : table DIN 934
+- FDM plastique (saisie libre) : ISO de taille ≥ D le plus proche, sinon 2×D
+- ISO saisie libre : ISO ≥ D le plus proche, sinon 1,75×D
 
 ### 3.2 Écrou hexagonal — chanfrein
 
-- Chanfrein d'alésage (optionnel) : boolean subtract de deux frustums solides (z=0 et z=L), creusant le cône d'entrée de filet sur chaque face.
-- Compatible Pro (native `Group#subtract`) et non-Pro (Eneroth Solid Tools).
+- Outil sablier unique (cone_bas + cylindre_central + cone_haut) soustrait en **un seul boolean**
+- Le cylindre central (r < r_bore_min) traverse l'alésage sans toucher le filet
+- Fiable sur toute la gamme M3–M32 — élimine les échecs de chaînage booléen
 
 ### 3.3 Génération simultanée
 
@@ -74,7 +80,7 @@ Si tige + écrou cochés : générés à l'**origine commune** (x=0). Pendant le
 vis_filets_generator.rb           # Loader + SketchupExtension
 vis_filets_generator/
   main.rb                         # Menu + guard @loaded
-  presets.rb                      # Tables ISO M3–M20 + FDM pitches
+  presets.rb                      # Tables ISO M3–M32 + FDM pitches
   profiles.rb                     # IsoProfile, PlasticProfile
   geometry.rb                     # Génération PolygonMesh
   dialog.rb                       # UI WebDialog / HtmlDialog
@@ -96,7 +102,7 @@ Pour chaque colonne angulaire i : z-positions placées exactement aux transition
 
 ## 5. Limitations connues
 
-- Chanfrein booléen : fiable sur toute la gamme M3–M20, tige et écrou (validé M3–M10)
+- Chanfrein booléen : fiable sur toute la gamme M3–M32 (validé M3–M12)
 - Filet à droite uniquement
 - Pas de tête de boulon (vis hex DIN 933) — écrou DIN 934 uniquement
 - N_THETA doit être multiple de 6 (validé automatiquement dans le dialog)

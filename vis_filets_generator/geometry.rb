@@ -16,6 +16,9 @@
 module VisFiletsGenerator
   module Geometry
 
+    # DEBUG : mettre true pour voir le sablier sans faire le subtract
+    DEBUG_CHAMFER_NUT = false
+
     # =========================================================================
     # Point d'entree
     # =========================================================================
@@ -69,7 +72,6 @@ module VisFiletsGenerator
                                           x_off_ecrou, nth, uf)
         end
 
-        cleanup_coplanar_edges(ecrou_group.entities) if ecrou_group&.valid?
       end
 
       # Ramener l'ecrou a l'origine apres chanfrein
@@ -85,17 +87,21 @@ module VisFiletsGenerator
     # =========================================================================
     # Tige filetee (filet externe, diametre D)
     # =========================================================================
-    def self.generate_tige(params, model, x_off = 0.0)
-      d      = params['d'].to_f
+    # profile_override : passer un profil precalcule (utilise pour le bore rod de l'ecrou)
+    # length_override  : longueur en unites modele (remplace length_tige du params)
+    def self.generate_tige(params, model, x_off = 0.0, profile_override = nil, length_override = nil)
       pitch  = params['pitch'].to_f
-      length = params.fetch('length_tige', params.fetch('length', 50.0)).to_f
+      length = length_override || params.fetch('length_tige', params.fetch('length', 50.0)).to_f
       nth    = params['n_theta'].to_i
 
-      uf             = unit_factor
-      sc             = compute_scale(pitch, nth, uf)
-      max_angle      = params.fetch('max_overhang_angle', 45.0).to_f
-      min_core_ratio = params.fetch('min_core_pct', 70.0).to_f / 100.0
-      profile        = make_profile(params['profile_type'], d / 2.0, pitch, max_angle, min_core_ratio)
+      uf      = unit_factor
+      sc      = compute_scale(pitch, nth, uf)
+      profile = profile_override || begin
+        d              = params['d'].to_f
+        max_angle      = params.fetch('max_overhang_angle', 45.0).to_f
+        min_core_ratio = params.fetch('min_core_pct', 70.0).to_f / 100.0
+        make_profile(params['profile_type'], d / 2.0, pitch, max_angle, min_core_ratio)
+      end
       cols           = build_columns(nth, pitch, length, profile)
       pad_columns!(cols)
       nz = cols.first.length
@@ -148,108 +154,100 @@ module VisFiletsGenerator
     end
 
     # =========================================================================
-    # Ecrou hexagonal (filet interne, alesage D+gap, forme hex exterieure)
-    # Tout dans un seul PolygonMesh => solide garanti, zero booleen
+    # Ecrou hexagonal — nouvelle strategie : hex plein − bore rod (boolean)
+    #
+    # 1. Prisme hexagonal plein (generate_hex_prism) — solide simple, sans defaut
+    # 2. Bore rod : tige avec le profil de l'alesage, longueur = L + 2*ext
+    #    (ext = 0.5 unites modele pour depasser les faces top/bottom)
+    # 3. Boolean subtract bore_rod du hex → nut propre, faces parfaites
     # =========================================================================
     def self.generate_ecrou(params, model, x_off = 0.0)
       d      = params['d'].to_f
       pitch  = params['pitch'].to_f
       length = params.fetch('length_ecrou', params.fetch('length', 8.0)).to_f
-      nth    = params['n_theta'].to_i
       gap    = params['gap'].to_f
 
-      n6 = nth / 6
-
-      # Dimensions hex (DIN 934 ou formule approchee)
+      # Dimensions hex :
+      #   ISO preset connu  → table DIN 934
+      #   FDM (m_size=custom, profil plastic) → 2 × D (solidite suffisante en plastique)
+      #   Autre custom ISO  → formule approchee 1.75 × D
       m_size = params['m_size'].to_s
       s_flat = if Presets::ISO_PRESETS.key?(m_size)
         Presets::ISO_PRESETS[m_size][:s_nut]
+      elsif params['profile_type'] == 'plastic'
+        # Ecrou ISO de taille superieure ou egale la plus proche → son s_nut
+        sorted = Presets::ISO_PRESETS.values.sort_by { |p| p[:d] }
+        match  = sorted.find { |p| p[:d] >= d }
+        match ? match[:s_nut] : 2.0 * d   # > M32 : 2 x D
       else
         Presets.s_nut_for(d)
       end
-      hex_r = s_flat / Math.sqrt(3.0)
+      hex_r  = s_flat / Math.sqrt(3.0)
 
       max_angle      = params.fetch('max_overhang_angle', 45.0).to_f
       min_core_ratio = params.fetch('min_core_pct', 70.0).to_f / 100.0
       ext_prof       = make_profile(params['profile_type'], d / 2.0, pitch, max_angle, min_core_ratio)
-      r_bore_min = ext_prof.r_minor + gap   # gap applique au rayon
-      r_bore_max = ext_prof.r_major + gap
-      bore_prof  = make_profile_custom(params['profile_type'], r_bore_max, r_bore_min, pitch, max_angle)
+      r_bore_max     = ext_prof.r_major + gap
+      r_bore_min     = ext_prof.r_minor + gap
+      bore_prof      = make_profile_custom(params['profile_type'], r_bore_max, r_bore_min, pitch, max_angle)
 
-      uf = unit_factor
-      sc = compute_scale(pitch, nth, uf)
+      uf       = unit_factor
+      sc       = compute_scale(pitch, params['n_theta'].to_i, uf)
+      ext_bot  = 0.01  # minuscule — evite la coplanarité boolean sans dephacer le filet
+      ext_top  = 0.5   # assure une coupe propre sur la face haute
 
-      cols = build_columns(nth, pitch, length, bore_prof)
-      pad_columns!(cols)
-      nz = cols.first.length
+      # 1. Prisme hexagonal plein
+      hex_group = generate_hex_prism(model, x_off, hex_r, length, uf, sc)
 
-      bore_verts = build_verts(nth, nz, cols, x_off, uf, sc)
+      # 2. Bore rod (s'etend de -ext_bot a length+ext_top)
+      bore_rod = generate_tige(params, model, x_off, bore_prof, length + ext_bot + ext_top)
+      bore_rod.transform!(Geom::Transformation.translation(
+        Geom::Vector3d.new(0, 0, -ext_bot * uf)
+      ))
 
-      # Sommets hex haut et bas
-      hex_top_pts = []
-      hex_bot_pts = []
+      # 3. Boolean subtract : hex − bore_rod = nut
+      model.start_operation('Ecrou boolean', true)
+      result = solid_subtract(model, hex_group, bore_rod)
+      if result.nil?
+        bore_rod.erase! if bore_rod.valid?
+        model.abort_operation
+        UI.messagebox('Écrou : soustraction booléenne échouée — écrou sans alésage.', MB_OK)
+        return hex_group
+      end
+      model.commit_operation
+      result.name = "Ecrou #{format_name(params)}"
+      result
+    end
+
+    # Prisme hexagonal plein (6 sommets/ring, aucun thread).
+    # Utilise le meme sc que le bore rod pour etre compatible avec le boolean.
+    def self.generate_hex_prism(model, x_off, hex_r, length, uf, sc)
+      mesh = Geom::PolygonMesh.new(14, 18)
+
+      top_idx = []; bot_idx = []
       6.times do |k|
         angle = 2.0 * Math::PI * k / 6.0
         hx = (x_off + hex_r * Math.cos(angle)) * sc * uf
         hy = hex_r * Math.sin(angle) * sc * uf
-        hex_top_pts << Geom::Point3d.new(hx, hy, length * sc * uf)
-        hex_bot_pts << Geom::Point3d.new(hx, hy, 0)
+        top_idx << mesh.add_point(Geom::Point3d.new(hx, hy, length * sc * uf))
+        bot_idx << mesh.add_point(Geom::Point3d.new(hx, hy, 0))
       end
+      ct = mesh.add_point(Geom::Point3d.new(x_off * sc * uf, 0, length * sc * uf))
+      cb = mesh.add_point(Geom::Point3d.new(x_off * sc * uf, 0, 0))
 
-      n_bore_wall = (nz - 1) * nth * 2
-      n_annular   = 2 * 6 * (n6 + 1)
-      n_hex_walls = 12
-      mesh = Geom::PolygonMesh.new(nz * nth + 14, n_bore_wall + n_annular + n_hex_walls)
-
-      b_idx  = Array.new(nz) { Array.new(nth) }
-      nz.times { |j| nth.times { |i| b_idx[j][i] = mesh.add_point(bore_verts[j][i]) } }
-
-      ht_idx = hex_top_pts.map { |pt| mesh.add_point(pt) }
-      hb_idx = hex_bot_pts.map { |pt| mesh.add_point(pt) }
-
-      # Filet interne (winding inverse => normales vers l'axe de l'alesage)
-      (nz - 1).times do |j|
-        nth.times do |i|
-          i2     = (i + 1) % nth
-          dup_i  = (cols[i][j][0]  - cols[i][j+1][0]).abs  < 1e-9
-          dup_i2 = (cols[i2][j][0] - cols[i2][j+1][0]).abs < 1e-9
-          tip    = cols[i][j][1] < 1e-9 && cols[i2][j][1]  < 1e-9
-          a, b, c, dv = b_idx[j][i], b_idx[j][i2], b_idx[j+1][i2], b_idx[j+1][i]
-          mesh.add_polygon(c, b, a)  unless dup_i2 || tip
-          mesh.add_polygon(dv, c, a) unless dup_i
-        end
-      end
-
-      # Face annulaire haute (normale +Z)
+      # Face haute +Z : centre → k → k+1
+      6.times { |k| mesh.add_polygon(ct, top_idx[k], top_idx[(k+1)%6]) }
+      # Face basse -Z : centre → k+1 → k
+      6.times { |k| mesh.add_polygon(cb, bot_idx[(k+1)%6], bot_idx[k]) }
+      # Parois (normale vers l'exterieur)
       6.times do |k|
-        n6.times do |j|
-          ca = b_idx[nz-1][(k * n6 + j)     % nth]
-          cb = b_idx[nz-1][(k * n6 + j + 1) % nth]
-          mesh.add_polygon(ht_idx[k], cb, ca)
-        end
-        mesh.add_polygon(ht_idx[k], ht_idx[(k+1)%6], b_idx[nz-1][(k+1)*n6 % nth])
-      end
-
-      # Face annulaire basse (normale -Z)
-      6.times do |k|
-        n6.times do |j|
-          ca = b_idx[0][(k * n6 + j)     % nth]
-          cb = b_idx[0][(k * n6 + j + 1) % nth]
-          mesh.add_polygon(hb_idx[k], ca, cb)
-        end
-        mesh.add_polygon(hb_idx[k], b_idx[0][(k+1)*n6 % nth], hb_idx[(k+1)%6])
-      end
-
-      # Parois hex exterieures (normales vers l'exterieur)
-      6.times do |k|
-        k2 = (k + 1) % 6
-        mesh.add_polygon(ht_idx[k], hb_idx[k],  hb_idx[k2])
-        mesh.add_polygon(ht_idx[k], hb_idx[k2], ht_idx[k2])
+        k2 = (k+1) % 6
+        mesh.add_polygon(bot_idx[k], bot_idx[k2], top_idx[k2])
+        mesh.add_polygon(bot_idx[k], top_idx[k2], top_idx[k])
       end
 
       group = model.entities.add_group
       group.entities.fill_from_mesh(mesh, true, 0)
-      group.name = "Ecrou #{format_name(params)}"
       group.transform!(Geom::Transformation.scaling(ORIGIN, 1.0 / sc))
       group
     end
@@ -434,13 +432,18 @@ module VisFiletsGenerator
     # Un seul boolean → pas de chainage → fiable sur tous les M.
     # =========================================================================
     def self.apply_chamfer_nut(model, group, r_bore_min, lc, length, x_off, nth, uf)
-      eps  = [lc * 0.1, 0.1].max
-      ra   = r_bore_min + lc + eps   # rayon large (entree/sortie)
-      rb   = r_bore_min - eps        # rayon etroit (cylindre central)
-      za   = -eps
+      eps  = 0.1   # tolerance supplementaire (mm)
+      # ext : le cone depasse les faces z=0 et z=L d'un pitch complet.
+      # A 45 deg, chaque mm de z supplementaire = 1 mm de r supplementaire.
+      # La surface chanfrein dans le nut (z=0→lc, r=r_bore_min+lc→r_bore_min)
+      # est strictement identique — seule la partie hors du nut est plus grande.
+      ext  = lc
+      ra   = r_bore_min + lc + ext + eps   # rayon large (entree/sortie)
+      rb   = r_bore_min - eps              # rayon etroit (cylindre central)
+      za   = -(ext + eps)      # 1 pitch sous la face basse du nut
       zb   = lc + eps
       zc   = length - lc - eps
-      zd   = length + eps
+      zd   = length + ext + eps  # 1 pitch au-dessus de la face haute du nut
 
       if zb >= zc
         UI.messagebox(
@@ -481,6 +484,15 @@ module VisFiletsGenerator
       model.start_operation('Chanfrein ecrou', true)
       tool = model.entities.add_group
       tool.entities.fill_from_mesh(mesh, true, 0)
+      tool.name = 'DEBUG_sablier_ecrou'
+
+      if DEBUG_CHAMFER_NUT
+        # Mode debug : sablier laisse visible, pas de subtract
+        model.commit_operation
+        puts '[VFG DEBUG] Sablier ecrou construit et laisse visible (DEBUG_CHAMFER_NUT=true)'
+        return group
+      end
+
       result = solid_subtract(model, group, tool)
       if result.nil?
         tool.erase! if tool.valid?
@@ -531,6 +543,7 @@ module VisFiletsGenerator
                          :make_profile, :make_profile_custom,
                          :build_columns, :apply_chamfer_rod, :apply_chamfer_nut,
                          :solid_subtract, :cleanup_coplanar_edges,
+                         :generate_hex_prism,
                          :pad_columns!, :build_verts, :add_center_lines_scaled, :format_name
 
   end
