@@ -65,7 +65,8 @@ module VisFiletsGenerator
         </div>
         <div class="row sub-row" id="row_length_ecrou">
           <div class="lbl">Nut height (mm)</div>
-          <input type="text" id="length_ecrou" value="8" min="0.1" step="1">
+          <input type="text" id="length_ecrou" value="8" min="0.1" step="1" onchange="updateNutHeightHint()">
+          <span class="adj" id="nut_height_hint">&nbsp;</span>
         </div>
       </div>
 
@@ -90,7 +91,7 @@ module VisFiletsGenerator
         </div>
         <div class="row">
           <div class="lbl">Pitch P (mm)</div>
-          <input type="text" id="pitch" value="1.5" min="0.1" step="0.01">
+          <input type="text" id="pitch" value="1.5" min="0.1" step="0.01" onchange="onPitchChange()">
         </div>
         <div class="hint" id="eng_hint"></div>
       </div>
@@ -140,7 +141,7 @@ module VisFiletsGenerator
       var currentMode = 'iso';
       var modeStates = {
         iso:     { m_size:'M10', d:10,  pitch:1.5,  gap:0.3, chamfer_height:1.5 },
-        plastic: { d:10,         pitch:2.5, gap:0.4, chamfer_height:2.5,
+        plastic: { d:10,         pitch:2.5, gap:0.4, chamfer_height:1.25,
                    max_overhang_angle:60, min_core_pct:70 }
       };
 
@@ -176,10 +177,12 @@ module VisFiletsGenerator
       function loadModeState(mode){
         var s=modeStates[mode];
         g('d').value=s.d; g('pitch').value=s.pitch; g('gap').value=s.gap;
-        g('chamfer_height').value=s.chamfer_height||s.pitch;
         if(mode==='iso'){
+          g('chamfer_height').value=s.chamfer_height||s.pitch;
           g('m_size').value=s.m_size||'M10';
         } else {
+          // FDM : chamfer height par defaut = P/2
+          g('chamfer_height').value=s.chamfer_height||((s.pitch/2).toFixed(2));
           g('m_size').value='custom';
           g('max_overhang_angle').value=s.max_overhang_angle||60;
           g('min_core_pct').value=s.min_core_pct||70;
@@ -189,6 +192,7 @@ module VisFiletsGenerator
       function onCreateChange(){
         setDim('row_length_tige',  !g('create_tige').checked);
         setDim('row_length_ecrou', !g('create_ecrou').checked);
+        updateNutHeightHint();
       }
 
       function onChamferChange(){
@@ -223,6 +227,33 @@ module VisFiletsGenerator
         onChamferChange();
         updateHint();
         updateAngleHint();
+        updateNutHeightHint();
+      }
+
+      function onPitchChange(){
+        if(currentMode==='plastic'){
+          var p=fv('pitch')||1.0;
+          g('chamfer_height').value=(p/2).toFixed(2);
+        }
+        updateAngleHint();
+        updateNutHeightHint();
+      }
+
+      function updateNutHeightHint(){
+        var el=g('nut_height_hint');
+        if(!el) return;
+        var isPlastic=(currentMode==='plastic');
+        var hasNut=g('create_ecrou')&&g('create_ecrou').checked;
+        if(!isPlastic||!hasNut){el.textContent=' ';el.style.opacity='0.3';return;}
+        var h=fv('length_ecrou')||8, pitch=fv('pitch')||1.0;
+        var ratio=h/pitch;
+        if(ratio<3){
+          el.textContent='⚠ '+ratio.toFixed(1)+'×P';
+          el.style.color='#c00'; el.style.opacity='1';
+        } else {
+          el.textContent='✓ '+ratio.toFixed(1)+'×P';
+          el.style.color='#2a7'; el.style.opacity='1';
+        }
       }
 
       function updateAngleHint(){
@@ -234,6 +265,7 @@ module VisFiletsGenerator
         el.textContent='depth: '+d.toFixed(3)+' mm';
         el.style.opacity=isPlastic?'1':'0.3';
         updateCoreHint();
+        updateNutHeightHint();
       }
 
       function updateCoreHint(){
@@ -272,11 +304,14 @@ module VisFiletsGenerator
       function onDChange(){
         if(currentMode==='plastic'){
           var d=fv('d')||10;
-          g('pitch').value=(0.25*d).toFixed(2);
+          var p=parseFloat((0.25*d).toFixed(2));
+          g('pitch').value=p;
+          g('chamfer_height').value=(p/2).toFixed(2);
         } else {
           g('m_size').value='custom';
         }
         updateHint();
+        updateNutHeightHint();
       }
 
       function updateHint(){

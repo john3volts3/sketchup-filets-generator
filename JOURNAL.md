@@ -323,6 +323,22 @@ Création du plugin SketchUp `vis_filets_generator` — générateur paramétriq
 
 ---
 
+## Session du 2026-05-03 (fin) — v1.8.1
+
+### Dialog FDM — hints et chamfer height (dialog.rb)
+
+- `updateNutHeightHint()` : affiche `⚠ N×P` en rouge si nut height < 3×P, `✓ N×P` en vert si OK — visible uniquement en mode FDM avec écrou coché
+- `onPitchChange()` : met à jour `chamfer_height = P/2` et le hint quand le pitch est modifié manuellement
+- `onDChange` FDM : met également à jour chamfer_height = P/2
+- `loadModeState('plastic')` : chamfer_height par défaut = P/2 (au lieu de P)
+- `modeStates.plastic.chamfer_height` : valeur initiale corrigée à 1.25 (= 2.5/2)
+- Span `nut_height_hint` ajouté au champ Nut height
+
+### Fichiers modifiés
+- `vis_filets_generator/dialog.rb`
+
+---
+
 ## Sources et références utilisées
 
 - ISO 261:1998 — *ISO general purpose metric screw threads — General plan*
