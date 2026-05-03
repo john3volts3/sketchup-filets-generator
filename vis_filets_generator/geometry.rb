@@ -420,61 +420,73 @@ module VisFiletsGenerator
     end
 
     # =========================================================================
-    # Chanfrein par boolean subtract — deux frustums (cones tronques) pour l'ecrou
+    # Chanfrein par boolean subtract — outil "sablier" unique pour l'ecrou
     #
-    # Entree (z=0)  : anneau large r_bore_min+lc -> anneau etroit r_bore_min a z=lc
-    # Sortie (z=L)  : anneau etroit r_bore_min a z=L-lc -> anneau large r_bore_min+lc
-    # Chaque frustum = 2 capuchons en eventail + surface laterale.
+    # Un seul PolygonMesh connecte applique les deux chanfreins en un boolean :
+    #   A (r_wide+e, z=-e)      : fond large sous l'ecrou
+    #   B (r_narrow-e, z=lc+e) : etranglement bas (dans l'alesage, ne coupe rien)
+    #   C (r_narrow-e, z=L-lc-e): etranglement haut (idem)
+    #   D (r_wide+e, z=L+e)    : dessus large au-dessus de l'ecrou
+    # Le cylindre B-C (r < r_bore_min) traverse l'alesage sans toucher le filet.
+    # Un seul boolean → pas de chainage → fiable sur tous les M.
     # =========================================================================
     def self.apply_chamfer_nut(model, group, r_bore_min, lc, length, x_off, nth, uf)
-      r_wide   = r_bore_min + lc
-      r_narrow = r_bore_min
+      eps  = [lc * 0.1, 0.1].max
+      ra   = r_bore_min + lc + eps   # rayon large (entree/sortie)
+      rb   = r_bore_min - eps        # rayon etroit (cylindre central)
+      za   = -eps
+      zb   = lc + eps
+      zc   = length - lc - eps
+      zd   = length + eps
 
-      # eps : depasse legerement les faces de l'ecrou pour eviter faces coplanaires / tangentes
-      eps = [lc * 0.1, 0.1].max
-
-      # idx=0 → face z=0 : etendu de -eps a lc+eps, rayons ajustes pour garder l'angle
-      # idx=1 → face z=L : etendu de L-lc-eps a L+eps, meme principe
-      [
-        [-eps,            lc + eps,      r_wide + eps, r_narrow - eps],
-        [length - lc - eps, length + eps, r_narrow - eps, r_wide  + eps]
-      ].each do |z_bot, z_top, r_bot, r_top|
-        bot_idx = Array.new(nth)
-        top_idx = Array.new(nth)
-        mesh    = Geom::PolygonMesh.new(nth * 2 + 2, nth * 4)
-
-        nth.times do |i|
-          theta = 2.0 * Math::PI * i / nth
-          ct    = Math.cos(theta)
-          st    = Math.sin(theta)
-          bot_idx[i] = mesh.add_point(Geom::Point3d.new((x_off + r_bot * ct) * uf, r_bot * st * uf, z_bot * uf))
-          top_idx[i] = mesh.add_point(Geom::Point3d.new((x_off + r_top * ct) * uf, r_top * st * uf, z_top * uf))
-        end
-        cb = mesh.add_point(Geom::Point3d.new(x_off * uf, 0, z_bot * uf))
-        ct_pt = mesh.add_point(Geom::Point3d.new(x_off * uf, 0, z_top * uf))
-
-        nth.times do |i|
-          i2 = (i + 1) % nth
-          mesh.add_polygon(cb,    bot_idx[i2], bot_idx[i])   # cap bas -Z
-          mesh.add_polygon(ct_pt, top_idx[i],  top_idx[i2])  # cap haut +Z
-          mesh.add_polygon(bot_idx[i], bot_idx[i2], top_idx[i2])  # lateral +R
-          mesh.add_polygon(bot_idx[i], top_idx[i2], top_idx[i])
-        end
-
-        model.start_operation('Chanfrein ecrou', true)
-        tool   = model.entities.add_group
-        tool.entities.fill_from_mesh(mesh, true, 0)
-        result = solid_subtract(model, group, tool)
-        if result.nil?
-          tool.erase! if tool.valid?
-          model.abort_operation
-          UI.messagebox("Chanfrein écrou (z=#{z_bot.round}) : opération booléenne échouée.", MB_OK)
-        else
-          model.commit_operation
-          group = result
-        end
+      if zb >= zc
+        UI.messagebox(
+          "Chanfrein écrou : hauteur chanfrein (#{lc.round(2)} mm) trop grande pour cet écrou (#{length.round(2)} mm). Ignoré.",
+          MB_OK
+        )
+        return group
       end
-      group
+
+      a_idx = Array.new(nth); b_idx = Array.new(nth)
+      c_idx = Array.new(nth); d_idx = Array.new(nth)
+
+      mesh = Geom::PolygonMesh.new(nth * 4 + 2, nth * 8)
+
+      nth.times do |i|
+        theta = 2.0 * Math::PI * i / nth
+        ct = Math.cos(theta); st = Math.sin(theta)
+        a_idx[i] = mesh.add_point(Geom::Point3d.new((x_off + ra*ct)*uf, ra*st*uf, za*uf))
+        b_idx[i] = mesh.add_point(Geom::Point3d.new((x_off + rb*ct)*uf, rb*st*uf, zb*uf))
+        c_idx[i] = mesh.add_point(Geom::Point3d.new((x_off + rb*ct)*uf, rb*st*uf, zc*uf))
+        d_idx[i] = mesh.add_point(Geom::Point3d.new((x_off + ra*ct)*uf, ra*st*uf, zd*uf))
+      end
+      cbot = mesh.add_point(Geom::Point3d.new(x_off*uf, 0, za*uf))
+      ctop = mesh.add_point(Geom::Point3d.new(x_off*uf, 0, zd*uf))
+
+      nth.times do |i|
+        i2 = (i + 1) % nth
+        mesh.add_polygon(cbot,    a_idx[i2], a_idx[i])        # cap bas   -Z
+        mesh.add_polygon(a_idx[i], a_idx[i2], b_idx[i2])      # cone bas  +R+Z
+        mesh.add_polygon(a_idx[i], b_idx[i2], b_idx[i])
+        mesh.add_polygon(b_idx[i], b_idx[i2], c_idx[i2])      # cylindre  +R
+        mesh.add_polygon(b_idx[i], c_idx[i2], c_idx[i])
+        mesh.add_polygon(c_idx[i], c_idx[i2], d_idx[i2])      # cone haut +R-Z
+        mesh.add_polygon(c_idx[i], d_idx[i2], d_idx[i])
+        mesh.add_polygon(ctop,    d_idx[i],   d_idx[i2])      # cap haut  +Z
+      end
+
+      model.start_operation('Chanfrein ecrou', true)
+      tool = model.entities.add_group
+      tool.entities.fill_from_mesh(mesh, true, 0)
+      result = solid_subtract(model, group, tool)
+      if result.nil?
+        tool.erase! if tool.valid?
+        model.abort_operation
+        UI.messagebox('Chanfrein écrou : opération booléenne échouée.', MB_OK)
+        return group
+      end
+      model.commit_operation
+      result
     end
 
     # Boolean subtract portable Pro / non-Pro.
