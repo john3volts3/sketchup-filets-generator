@@ -325,11 +325,12 @@ module VisFiletsGenerator
         }
       }
 
-      window.addEventListener('resize', function(){
-        var s=window.innerWidth+'x'+window.innerHeight;
-        if(typeof sketchup!=='undefined') sketchup.log_size(s);
-        else window.location='skp:log_size@'+s;
-      });
+      // Debug resize — décommenter pour afficher la taille dans la console Ruby
+      // window.addEventListener('resize', function(){
+      //   var s=window.innerWidth+'x'+window.innerHeight;
+      //   if(typeof sketchup!=='undefined') sketchup.log_size(s);
+      //   else window.location='skp:log_size@'+s;
+      // });
       window.onload = function(){ initForm(SAVED); };
       </script>
       </body>
