@@ -36,12 +36,22 @@ module VisFiletsGenerator
 
       model.start_operation('Vis & Filets', true)
       begin
-        tige_group   = generate_tige(params, model, 0.0)          if params['create_tige']
-        ecrou_group  = generate_ecrou(params, model, x_off_ecrou)  if params['create_ecrou']
-        taraud_group = generate_taraud(params, model)              if params['create_taraud']
+        if params['create_tige']
+          Sketchup.status_text = 'Vis & Filets — Threaded rod: building columns…'
+          tige_group = generate_tige(params, model, 0.0)
+        end
+        if params['create_ecrou']
+          Sketchup.status_text = 'Vis & Filets — Hex nut: generating…'
+          ecrou_group = generate_ecrou(params, model, x_off_ecrou)
+        end
+        if params['create_taraud']
+          Sketchup.status_text = 'Vis & Filets — Tap: generating…'
+          taraud_group = generate_taraud(params, model)
+        end
         model.commit_operation
       rescue => e
         model.abort_operation
+        Sketchup.status_text = ''
         UI.messagebox(
           "Erreur de generation :\n#{e.message}\n\n#{e.backtrace.first(3).join("\n")}",
           MB_OK
@@ -58,6 +68,7 @@ module VisFiletsGenerator
         tige_profile = make_profile(params['profile_type'], d / 2.0, pitch, max_angle, min_core_ratio)
 
         if params['chamfer']
+          Sketchup.status_text = 'Vis & Filets — Threaded rod: chamfer…'
           tige_group = apply_chamfer_rod(model, tige_group, tige_profile.r_major, tige_profile.r_minor,
                                          lc, length_tige, 0.0, nth, uf)
         end
@@ -68,6 +79,7 @@ module VisFiletsGenerator
         ecrou_profile = make_profile(params['profile_type'], d / 2.0, pitch, max_angle, min_core_ratio)
 
         if params['chamfer']
+          Sketchup.status_text = 'Vis & Filets — Hex nut: chamfer…'
           r_bore_min  = ecrou_profile.r_minor + gap
           ecrou_group = apply_chamfer_nut(model, ecrou_group, r_bore_min, lc, length_ecrou,
                                           x_off_ecrou, nth, uf)
@@ -82,6 +94,8 @@ module VisFiletsGenerator
         ))
         model.commit_operation
       end
+
+      Sketchup.status_text = ''
     end
 
     # =========================================================================
@@ -197,15 +211,18 @@ module VisFiletsGenerator
       ext_top  = 0.5   # assure une coupe propre sur la face haute
 
       # 1. Prisme hexagonal plein
+      Sketchup.status_text = 'Vis & Filets — Hex nut: hex prism…'
       hex_group = generate_hex_prism(model, x_off, hex_r, length, uf, sc)
 
       # 2. Bore rod (s'etend de -ext_bot a length+ext_top)
+      Sketchup.status_text = 'Vis & Filets — Hex nut: bore rod…'
       bore_rod = generate_tige(params, model, x_off, bore_prof, length + ext_bot + ext_top)
       bore_rod.transform!(Geom::Transformation.translation(
         Geom::Vector3d.new(0, 0, -ext_bot * uf)
       ))
 
       # 3. Boolean subtract : hex − bore_rod = nut
+      Sketchup.status_text = 'Vis & Filets — Hex nut: boolean subtract…'
       model.start_operation('Ecrou boolean', true)
       result = solid_subtract(model, hex_group, bore_rod)
       if result.nil?
@@ -254,19 +271,24 @@ module VisFiletsGenerator
       label = format_name_tap(params)
 
       # 1. Bore rod fileté — allongé pour compenser le cône de pointe (lc = r_bore_max)
+      Sketchup.status_text = 'Vis & Filets — Tap: bore rod…'
       length_rod = length + r_bore_max * 1.1
       bore_rod = generate_tige(params, model, x_off, bore_prof, length_rod)
 
-      # 2. Chanfrein d'entree en bas — meme technique que apply_chamfer_rod mais a z=0
+      # 2. Chanfrein d'entree en bas
+      Sketchup.status_text = 'Vis & Filets — Tap: entry chamfer…'
       bore_rod = apply_chamfer_tap_bottom(model, bore_rod, r_bore_max, r_bore_min, pitch, x_off, nth, uf)
 
       # 3. Cylindre de degagement
+      Sketchup.status_text = 'Vis & Filets — Tap: shank cylinder…'
       cyl = generate_plain_cylinder(model, x_off, r_cyl, length, h_cyl, nth, uf)
 
-      # 4. Prisme carre avec croix d'alignement
+      # 4. Prisme carre
+      Sketchup.status_text = 'Vis & Filets — Tap: square drive…'
       sq = generate_square_prism(model, x_off, sq_hs, length + h_cyl, h_sq, uf)
 
       # 5. Union booléenne : bore_rod + cyl + sq
+      Sketchup.status_text = 'Vis & Filets — Tap: boolean union…'
       model.start_operation('Tap union', true)
       merged = solid_union(model, bore_rod, cyl)
       if merged

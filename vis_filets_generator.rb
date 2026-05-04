@@ -6,7 +6,7 @@ require 'sketchup.rb'
 require 'extensions.rb'
 
 module VisFiletsGenerator
-  VERSION    = '1.9.0'.freeze
+  VERSION    = '1.9.1'.freeze
   PLUGIN_DIR = File.dirname(__FILE__).freeze
 
   extension = SketchupExtension.new(

@@ -373,6 +373,20 @@ Création du plugin SketchUp `vis_filets_generator` — générateur paramétriq
 
 ---
 
+## Session du 2026-05-04 (suite) — v1.9.1
+
+### Status bar — progression visible (`geometry.rb`)
+
+- Ajout de `Sketchup.status_text` aux étapes clés de la génération.
+- Messages affichés en bas à gauche de SketchUp pendant le traitement : bore rod, boolean subtract écrou, chanfrein tige/écrou, entry chamfer tap, shank cylinder, square drive, boolean union tap.
+- Remise à zéro `Sketchup.status_text = ''` à la fin (succès ou erreur).
+
+### Fichiers modifiés
+- `vis_filets_generator.rb` (version → 1.9.1)
+- `vis_filets_generator/geometry.rb`
+
+---
+
 ## Sources et références utilisées
 
 - ISO 261:1998 — *ISO general purpose metric screw threads — General plan*
