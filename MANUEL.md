@@ -1,5 +1,7 @@
 # User Manual — vis_filets_generator v1.9.0
 
+▶️ **[Video demo on YouTube](https://youtu.be/WcOK8VdVc-E)**
+
 ---
 
 ## Table of contents
@@ -234,6 +236,8 @@ The tap is a **single watertight solid** ready for boolean subtraction.
 ---
 
 # Manuel utilisateur — vis_filets_generator v1.9.0
+
+▶️ **[Vidéo de démonstration sur YouTube](https://youtu.be/WcOK8VdVc-E)**
 
 ---
 

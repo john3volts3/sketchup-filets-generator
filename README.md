@@ -7,6 +7,12 @@ Parametric generator for **threaded rods**, **hex nuts** and **taps** in SketchU
 
 ---
 
+## Demo
+
+▶️ **[Watch on YouTube](https://youtu.be/WcOK8VdVc-E)**
+
+---
+
 ## Why this plugin?
 
 Existing SketchUp thread plugins either require drawing the profile by hand or fail to produce usable solids. This plugin generates **watertight solids** ready for the slicer, in any SketchUp unit (mm, cm, m…).
@@ -133,6 +139,12 @@ build/
 > Solides watertight, géométrie ISO correcte, profils adaptés à l'impression FDM, chanfrein d'entrée, et un taraud prêt à soustraire de n'importe quel solide. Sans dessin manuel, sans maillage cassé, sans contournement.
 
 Générateur paramétrique de **tiges filetées**, **écrous hexagonaux** et **tarauds** pour SketchUp, optimisé pour l'impression 3D FDM. Compatible SketchUp 2014 jusqu'à la version la plus récente.
+
+## Démo
+
+▶️ **[Voir sur YouTube](https://youtu.be/WcOK8VdVc-E)**
+
+---
 
 ## Pourquoi ce plugin ?
 
