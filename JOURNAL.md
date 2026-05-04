@@ -339,6 +339,40 @@ Création du plugin SketchUp `vis_filets_generator` — générateur paramétriq
 
 ---
 
+## Session du 2026-05-04 — v1.9.0
+
+### Nouvelle pièce : Tap (taraud) — `geometry.rb`, `dialog.rb`
+
+**Géométrie du tap** (3 solides unionnés) :
+- **Bore rod fileté** : même profil que l'alésage de l'écrou (r_bore_max = r_major + gap, r_bore_min = r_minor + gap). Longueur allongée de `r_bore_max × 1,1` pour compenser le cone d'entrée.
+- **Chanfrein d'entrée 45°** (`apply_chamfer_tap_bottom`) : cône plein apex au centre (r=0, z=0), base à z=r_bore_max avec rayon r_bore_max. Coupe jusqu'au centre pour créer la pointe conique caractéristique du taraud.
+- **Cylindre de dégagement** : rayon = `r_minor × 0,95` (légèrement sous le diamètre intérieur du filet), hauteur = D.
+- **Prisme carré** : côté = `r_cyl / √2 × 0,9` (inscrit dans le cylindre avec marge 10%), hauteur = `0,45 × D`. Proportions ISO 529.
+- **Union booléenne** des 3 parties (Pro/Eneroth). En cas d'échec : 3 groupes nommés séparément (Thread/Shank/Square).
+- **Couleur** : matériau du premier objet sélectionné dans SketchUp au moment de la génération. Aucune couleur assignée si pas de sélection ou pas de matériau.
+
+**Dialog — card "Parts to create"** :
+- Troisième case "Tap" avec champ "height" inline à droite.
+- Champ Gap actif dès que Hex nut OU Tap est coché.
+- Champ "Tap color" (swatch cliquable) : lit la couleur de l'objet sélectionné. Si aucun matériau, swatch hachuré = aucune couleur assignée.
+
+**Dialog — améliorations layout** :
+- Les 3 lignes "Threaded rod / Hex nut / Tap" regroupées sur une ligne chacune : checkbox + label (largeur fixe 110 px) + "height" + input. Gain ≈ 60 px de hauteur.
+- Debug resize réactivé (listener `window.resize` → console Ruby).
+- Taille fenêtre configurable ligne 465 de `dialog.rb`.
+
+**Sauvegarde paramètres** :
+- `create_taraud`, `length_taraud` persistés dans le registre SketchUp.
+- Gap : sauvegarde immédiate à chaque modification (callback `save_gap` Ruby), indépendamment de "Générer".
+
+### Fichiers modifiés
+- `vis_filets_generator.rb` (version → 1.9.0)
+- `vis_filets_generator/geometry.rb`
+- `vis_filets_generator/dialog.rb`
+- `FSD.md`
+
+---
+
 ## Sources et références utilisées
 
 - ISO 261:1998 — *ISO general purpose metric screw threads — General plan*

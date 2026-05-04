@@ -1,8 +1,8 @@
 # Spécifications fonctionnelles détaillées (FSD)
 
 **Projet** : Plugin SketchUp `vis_filets_generator` — Générateur de filets paramétriques
-**Version** : 1.8.0
-**Date** : 2026-05-03
+**Version** : 1.9.0
+**Date** : 2026-05-04
 
 ---
 
@@ -22,7 +22,7 @@ Compatibilité : SketchUp 2014 à la version la plus récente.
 | 2 | D (diamètre nominal) | Dropdown + saisie libre | M3–M32 (ISO) ; saisie libre (FDM) |
 | 3 | Pas P | Saisie numérique | Auto-rempli depuis table ISO ou 0,25×D (FDM), toujours éditable |
 | 4 | Hauteur | Saisie numérique | mm dans l'unité du modèle |
-| 5 | Pièces | Checkboxes | ☑ Tige filetée  ☑ Écrou hexagonal (combinables) |
+| 5 | Pièces | Checkboxes | ☑ Tige filetée  ☑ Écrou hexagonal  ☑ Tap (combinables) |
 | 6 | Gap | Saisie numérique | 0,3 mm défaut ISO ; 0,4 mm défaut plastique |
 | 7 | Chanfrein d'entrée | Case à cocher + hauteur (mm) | Non (défaut) ; hauteur = 1 pas |
 | 8 | Segments/tour | Entier multiple de 6 | 24 (défaut) |
@@ -60,13 +60,23 @@ Généré par **boolean subtract** (prisme hex plein − bore rod) :
 - FDM plastique (saisie libre) : ISO de taille ≥ D le plus proche, sinon 2×D
 - ISO saisie libre : ISO ≥ D le plus proche, sinon 1,75×D
 
-### 3.2 Écrou hexagonal — chanfrein
+### 3.3 Tap (taraud)
+
+Outil de taraudage génère par **union booléenne** de 3 solides :
+- **Bore rod fileté** : profil alésage (r_bore_max = r_major + gap), longueur = `length_taraud + r_bore_max × 1,1` (compensation cone d'entrée)
+- **Chanfrein d'entrée 45°** : cône plein apex au centre, base à z=r_bore_max — coupe jusqu'au centre pour créer la pointe caractéristique
+- **Cylindre de dégagement** : rayon = `r_minor × 0,95`, hauteur = D
+- **Prisme carré** : côté = `r_cyl / √2 × 0,9` (inscrit dans le cylindre, marge 10%), hauteur = `0,45 × D`
+- **Union booléenne** Pro/Eneroth ; fallback 3 groupes nommés si indisponible
+- **Couleur** : matériau de l'objet sélectionné dans SketchUp au moment de la génération ; aucune couleur si pas de matériau
+
+### 3.4 Écrou hexagonal — chanfrein
 
 - Outil sablier unique (cone_bas + cylindre_central + cone_haut) soustrait en **un seul boolean**
 - Le cylindre central (r < r_bore_min) traverse l'alésage sans toucher le filet
 - Fiable sur toute la gamme M3–M32 — élimine les échecs de chaînage booléen
 
-### 3.3 Génération simultanée
+### 3.5 Génération simultanée
 
 Si tige + écrou cochés : générés à l'**origine commune** (x=0). Pendant le chanfrein, l'écrou est temporairement décalé pour éviter les interférences booléennes avec la tige, puis ramené à x=0.
 

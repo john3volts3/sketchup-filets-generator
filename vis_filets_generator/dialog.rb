@@ -29,6 +29,13 @@ module VisFiletsGenerator
         select{width:130px}
         input[type=text]{width:80px}
         .check-row{margin:4px 0}
+        .lbl-i{color:#666;font-size:11px;margin:0 3px}
+        .color-swatch{width:44px;height:22px;border:1px solid #bbb;border-radius:2px;
+          cursor:pointer;display:inline-block;vertical-align:middle}
+        .color-none{background:repeating-linear-gradient(45deg,#ddd,#ddd 3px,#fff 3px,#fff 7px)}
+        .clr-btn{cursor:pointer;color:#999;font-size:13px;margin-left:4px;
+          line-height:1;vertical-align:middle;user-select:none}
+        .clr-btn:hover{color:#c00}
         .hint{color:#777;font-size:10px;margin-top:3px;font-style:italic}
         .adj{color:#2a7;font-size:10px;margin-left:4px}
         #btn{width:100%;padding:7px;background:#0066cc;color:#fff;border:none;
@@ -53,20 +60,23 @@ module VisFiletsGenerator
 
       <div class="card">
         <h3>Parts to create</h3>
-        <div class="check-row">
-          <label><input type="checkbox" id="create_tige" checked onchange="onCreateChange()"> Threaded rod &nbsp;(&#216; D)</label>
+        <div class="check-row" style="display:flex;align-items:center">
+          <label style="width:110px;flex-shrink:0"><input type="checkbox" id="create_tige" checked onchange="onCreateChange()"> Threaded rod</label>
+          <span id="row_length_tige" style="display:flex;align-items:center">
+            <span class="lbl-i">height</span><input type="text" id="length_tige" value="50" min="0.1" step="1">
+          </span>
         </div>
-        <div class="row sub-row" id="row_length_tige">
-          <div class="lbl">Rod height (mm)</div>
-          <input type="text" id="length_tige" value="50" min="0.1" step="1">
+        <div class="check-row" style="display:flex;align-items:center;margin-top:5px">
+          <label style="width:110px;flex-shrink:0"><input type="checkbox" id="create_ecrou" onchange="onCreateChange()"> Hex nut</label>
+          <span id="row_length_ecrou" class="dim" style="display:flex;align-items:center">
+            <span class="lbl-i">height</span><input type="text" id="length_ecrou" value="8" min="0.1" step="1" onchange="updateNutHeightHint()"><span class="adj" id="nut_height_hint">&nbsp;</span>
+          </span>
         </div>
-        <div class="check-row" style="margin-top:6px">
-          <label><input type="checkbox" id="create_ecrou" onchange="onCreateChange()"> Hex nut &nbsp;(bore D + gap)</label>
-        </div>
-        <div class="row sub-row" id="row_length_ecrou">
-          <div class="lbl">Nut height (mm)</div>
-          <input type="text" id="length_ecrou" value="8" min="0.1" step="1" onchange="updateNutHeightHint()">
-          <span class="adj" id="nut_height_hint">&nbsp;</span>
+        <div class="check-row" style="display:flex;align-items:center;margin-top:5px">
+          <label style="width:110px;flex-shrink:0"><input type="checkbox" id="create_taraud" onchange="onCreateChange()"> Tap</label>
+          <span id="row_length_taraud" class="dim" style="display:flex;align-items:center">
+            <span class="lbl-i">height</span><input type="text" id="length_taraud" value="20" min="0.1" step="1">
+          </span>
         </div>
       </div>
 
@@ -98,9 +108,14 @@ module VisFiletsGenerator
 
       <div class="card">
         <h3>Options</h3>
-        <div class="row">
+        <div class="row" id="gap_row">
           <div class="lbl">Gap (mm)</div>
-          <input type="text" id="gap" value="0.3" min="0" step="0.05">
+          <input type="text" id="gap" value="0.3" min="0" step="0.05" onchange="onGapChange()">
+        </div>
+        <div class="row dim" id="tap_color_row">
+          <div class="lbl">Tap color</div>
+          <div id="tap_color_swatch" class="color-swatch" title="Click: pick color from selected object" onclick="tapColorClick()"></div>
+          <input type="hidden" id="tap_color" value="">
         </div>
         <div class="check-row"><label><input type="checkbox" id="chamfer" onchange="onChamferChange()"> Thread lead-in chamfer</label></div>
         <div class="row dim" id="chamfer_height_row">
@@ -190,9 +205,44 @@ module VisFiletsGenerator
       }
 
       function onCreateChange(){
-        setDim('row_length_tige',  !g('create_tige').checked);
-        setDim('row_length_ecrou', !g('create_ecrou').checked);
+        setDim('row_length_tige',   !g('create_tige').checked);
+        setDim('row_length_ecrou',  !g('create_ecrou').checked);
+        setDim('row_length_taraud', !g('create_taraud').checked);
+        var needGap = g('create_ecrou').checked || g('create_taraud').checked;
+        setDim('gap_row', !needGap);
+        setDim('tap_color_row', !g('create_taraud').checked);
         updateNutHeightHint();
+      }
+
+      function setSwatchColor(hex){
+        var sw=g('tap_color_swatch');
+        if(hex){
+          sw.style.background=hex;
+          sw.className='color-swatch';
+        } else {
+          sw.style.background='';
+          sw.className='color-swatch color-none';
+        }
+        g('tap_color').value=hex||'';
+      }
+
+      function tapColorClick(){
+        if(typeof sketchup!=='undefined') sketchup.pick_tap_color('');
+        else window.location='skp:pick_tap_color@';
+      }
+
+      function tapColorClear(){ setSwatchColor(''); }
+
+      function onTapColorPicked(hex){ setSwatchColor(hex); }
+
+      function onGapChange(){
+        modeStates[currentMode].gap = fv('gap');
+        var j=JSON.stringify({iso_gap:modeStates.iso.gap, plastic_gap:modeStates.plastic.gap});
+        if(typeof sketchup!=='undefined'){
+          sketchup.save_gap(j);
+        } else {
+          window.location='skp:save_gap@'+encodeURIComponent(j);
+        }
       }
 
       function onChamferChange(){
@@ -217,12 +267,15 @@ module VisFiletsGenerator
         // Charger les params du mode actif
         loadModeState(currentMode);
         // Params independants du mode
-        if(s.create_tige!==undefined)  g('create_tige').checked=s.create_tige;
-        if(s.create_ecrou!==undefined) g('create_ecrou').checked=s.create_ecrou;
-        if(s.length_tige!==undefined)  g('length_tige').value=s.length_tige;
-        if(s.length_ecrou!==undefined) g('length_ecrou').value=s.length_ecrou;
-        if(s.chamfer!==undefined)      g('chamfer').checked=s.chamfer;
-        if(s.n_theta!==undefined)      g('n_theta').value=s.n_theta;
+        if(s.create_tige!==undefined)   g('create_tige').checked=s.create_tige;
+        if(s.create_ecrou!==undefined)  g('create_ecrou').checked=s.create_ecrou;
+        if(s.create_taraud!==undefined) g('create_taraud').checked=s.create_taraud;
+        if(s.length_tige!==undefined)   g('length_tige').value=s.length_tige;
+        if(s.length_ecrou!==undefined)  g('length_ecrou').value=s.length_ecrou;
+        if(s.length_taraud!==undefined) g('length_taraud').value=s.length_taraud;
+        if(s.chamfer!==undefined)   g('chamfer').checked=s.chamfer;
+        if(s.n_theta!==undefined)   g('n_theta').value=s.n_theta;
+        setSwatchColor(s.tap_color||'');
         onCreateChange();
         onChamferChange();
         updateHint();
@@ -333,14 +386,16 @@ module VisFiletsGenerator
         g('err').textContent='';
         onNTheta();
         var tige=g('create_tige').checked, ecrou=g('create_ecrou').checked;
-        if(!tige&&!ecrou){g('err').textContent='Check at least one part.';return;}
+        var taraud=g('create_taraud').checked;
+        if(!tige&&!ecrou&&!taraud){g('err').textContent='Check at least one part.';return;}
         var d=fv('d'),pitch=fv('pitch'),gap=fv('gap'),nth=iv('n_theta');
-        var lt=fv('length_tige'), le=fv('length_ecrou');
+        var lt=fv('length_tige'), le=fv('length_ecrou'), lta=fv('length_taraud');
         if(d<=0){g('err').textContent='Invalid D.';return;}
         if(pitch<=0){g('err').textContent='Invalid pitch P.';return;}
         if(tige&&lt<=0){g('err').textContent='Invalid rod height.';return;}
         if(ecrou&&le<=0){g('err').textContent='Invalid nut height.';return;}
-        if(gap<0){g('err').textContent='Invalid gap.';return;}
+        if(taraud&&lta<=0){g('err').textContent='Invalid tap thread length.';return;}
+        if((ecrou||taraud)&&gap<0){g('err').textContent='Invalid gap.';return;}
         saveModeState(currentMode);
         var p={
           profile_type:currentMode,
@@ -348,14 +403,15 @@ module VisFiletsGenerator
           plastic:modeStates.plastic,
           m_size:g('m_size').value,
           d:d, pitch:pitch,
-          length_tige:lt, length_ecrou:le,
-          create_tige:tige, create_ecrou:ecrou,
+          length_tige:lt, length_ecrou:le, length_taraud:lta,
+          create_tige:tige, create_ecrou:ecrou, create_taraud:taraud,
           gap:gap,
           chamfer:g('chamfer').checked,
           chamfer_height:fv('chamfer_height')||pitch||1.5,
           n_theta:nth,
           max_overhang_angle:fv('max_overhang_angle')||60,
-          min_core_pct:fv('min_core_pct')||70
+          min_core_pct:fv('min_core_pct')||70,
+          tap_color:g('tap_color').value
         };
         var j=JSON.stringify(p);
         if(typeof sketchup!=='undefined'){
@@ -365,12 +421,12 @@ module VisFiletsGenerator
         }
       }
 
-      // Debug resize — décommenter pour afficher la taille dans la console Ruby
-      // window.addEventListener('resize', function(){
-      //   var s=window.innerWidth+'x'+window.innerHeight;
-      //   if(typeof sketchup!=='undefined') sketchup.log_size(s);
-      //   else window.location='skp:log_size@'+s;
-      // });
+      // Debug resize — affiche la taille dans la console Ruby
+      window.addEventListener('resize', function(){
+        var s=window.innerWidth+'x'+window.innerHeight;
+        if(typeof sketchup!=='undefined') sketchup.log_size(s);
+        else window.location='skp:log_size@'+s;
+      });
       window.onload = function(){ initForm(SAVED); };
       </script>
       </body>
@@ -385,12 +441,15 @@ module VisFiletsGenerator
       fdm_pitch = Sketchup.read_default(PREF_KEY, 'plastic_pitch', 2.5).to_f
       {
         'profile_type' => Sketchup.read_default(PREF_KEY, 'profile_type', 'iso'),
-        'create_tige'  => Sketchup.read_default(PREF_KEY, 'create_tige',  true),
-        'create_ecrou' => Sketchup.read_default(PREF_KEY, 'create_ecrou', false),
-        'length_tige'  => Sketchup.read_default(PREF_KEY, 'length_tige',  50.0).to_f,
-        'length_ecrou' => Sketchup.read_default(PREF_KEY, 'length_ecrou', 8.0).to_f,
-        'chamfer'      => Sketchup.read_default(PREF_KEY, 'chamfer',      false),
-        'n_theta'      => Sketchup.read_default(PREF_KEY, 'n_theta',      24).to_i,
+        'create_tige'   => Sketchup.read_default(PREF_KEY, 'create_tige',   true),
+        'create_ecrou'  => Sketchup.read_default(PREF_KEY, 'create_ecrou',  false),
+        'create_taraud' => Sketchup.read_default(PREF_KEY, 'create_taraud', false),
+        'length_tige'   => Sketchup.read_default(PREF_KEY, 'length_tige',   50.0).to_f,
+        'length_ecrou'  => Sketchup.read_default(PREF_KEY, 'length_ecrou',  8.0).to_f,
+        'length_taraud' => Sketchup.read_default(PREF_KEY, 'length_taraud', 20.0).to_f,
+        'chamfer'       => Sketchup.read_default(PREF_KEY, 'chamfer',       false),
+        'n_theta'       => Sketchup.read_default(PREF_KEY, 'n_theta',       24).to_i,
+        'tap_color'     => Sketchup.read_default(PREF_KEY, 'tap_color',     nil) || detect_tap_color,
         'iso' => {
           'm_size'         => Sketchup.read_default(PREF_KEY, 'iso_m_size',         'M10'),
           'd'              => Sketchup.read_default(PREF_KEY, 'iso_d',              10.0).to_f,
@@ -410,8 +469,9 @@ module VisFiletsGenerator
     end
 
     def self.save_defaults(params)
-      %w[profile_type create_tige create_ecrou length_tige length_ecrou
-         chamfer n_theta].each do |k|
+      %w[profile_type create_tige create_ecrou create_taraud
+         length_tige length_ecrou length_taraud
+         chamfer n_theta tap_color].each do |k|
         Sketchup.write_default(PREF_KEY, k, params[k]) if params.key?(k)
       end
       if params['iso'].is_a?(Hash)
@@ -419,6 +479,23 @@ module VisFiletsGenerator
       end
       if params['plastic'].is_a?(Hash)
         params['plastic'].each { |k, v| Sketchup.write_default(PREF_KEY, "plastic_#{k}", v) }
+      end
+    end
+
+    def self.detect_tap_color
+      begin
+        color = if defined?(SolidBatch) && SolidBatch.respond_to?(:subtract_color)
+          SolidBatch.subtract_color
+        else
+          r = Sketchup.read_default('SolidBatch', 'subtract_color_r', nil)
+          r ? Sketchup::Color.new(r.to_i,
+                Sketchup.read_default('SolidBatch', 'subtract_color_g', 0).to_i,
+                Sketchup.read_default('SolidBatch', 'subtract_color_b', 0).to_i)
+            : nil
+        end
+        color ? '#%02X%02X%02X' % [color.red, color.green, color.blue] : '#FFE5CC'
+      rescue
+        '#FFE5CC'
       end
     end
 
@@ -437,8 +514,8 @@ module VisFiletsGenerator
       dlg = UI::HtmlDialog.new(
         dialog_title:    DIALOG_TITLE,
         preferences_key: 'VFGDialog',
-        width:  360,
-        height: 620,
+        width:  384,
+        height: 640,
         min_width:  300,
         min_height: 400,
         style: UI::HtmlDialog::STYLE_DIALOG
@@ -446,6 +523,25 @@ module VisFiletsGenerator
       dlg.set_html(build_html(read_defaults))
       dlg.add_action_callback('generate') do |_ctx, json_str|
         handle_generate(json_str)
+      end
+      dlg.add_action_callback('save_gap') do |_ctx, json_str|
+        begin
+          data = JSON.parse(json_str)
+          Sketchup.write_default(PREF_KEY, 'iso_gap',     data['iso_gap'].to_f)     if data.key?('iso_gap')
+          Sketchup.write_default(PREF_KEY, 'plastic_gap', data['plastic_gap'].to_f) if data.key?('plastic_gap')
+        rescue; end
+      end
+      dlg.add_action_callback('pick_tap_color') do |_ctx, _|
+        sel = Sketchup.active_model.selection.first
+        if sel
+          if sel.respond_to?(:material) && sel.material
+            c = sel.material.color
+            hex = '#%02X%02X%02X' % [c.red, c.green, c.blue]
+            dlg.execute_script("onTapColorPicked('#{hex}')")
+          else
+            dlg.execute_script("onTapColorPicked('')")
+          end
+        end
       end
       dlg.add_action_callback('log_size') do |_ctx, dims|
         puts "[VFG] Dialog content size: #{dims}"
@@ -464,6 +560,13 @@ module VisFiletsGenerator
           UI.messagebox("Erreur decodage : #{e.message}", MB_OK)
         end
       end
+      dlg.add_action_callback('save_gap') do |_dlg, encoded|
+        begin
+          data = JSON.parse(CGI.unescape(encoded.to_s))
+          Sketchup.write_default(PREF_KEY, 'iso_gap',     data['iso_gap'].to_f)     if data.key?('iso_gap')
+          Sketchup.write_default(PREF_KEY, 'plastic_gap', data['plastic_gap'].to_f) if data.key?('plastic_gap')
+        rescue; end
+      end
       dlg.show
     end
 
@@ -475,7 +578,7 @@ module VisFiletsGenerator
       UI.messagebox("Erreur JSON : #{e.message}", MB_OK)
     end
 
-    private_class_method :read_defaults, :save_defaults, :build_html,
+    private_class_method :read_defaults, :save_defaults, :detect_tap_color, :build_html,
                          :show_html_dialog, :show_web_dialog, :handle_generate
 
   end

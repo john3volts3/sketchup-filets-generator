@@ -28,15 +28,17 @@ module VisFiletsGenerator
       pitch = params['pitch'].to_f
       nth   = params['n_theta'].to_i
       uf    = unit_factor
-      tige_group  = nil
-      ecrou_group = nil
+      tige_group   = nil
+      ecrou_group  = nil
+      taraud_group = nil
 
       x_off_ecrou = (params['create_tige'] && params['create_ecrou']) ? (d * 2.5 + gap) : 0.0
 
       model.start_operation('Vis & Filets', true)
       begin
-        tige_group  = generate_tige(params, model, 0.0)          if params['create_tige']
-        ecrou_group = generate_ecrou(params, model, x_off_ecrou)  if params['create_ecrou']
+        tige_group   = generate_tige(params, model, 0.0)          if params['create_tige']
+        ecrou_group  = generate_ecrou(params, model, x_off_ecrou)  if params['create_ecrou']
+        taraud_group = generate_taraud(params, model)              if params['create_taraud']
         model.commit_operation
       rescue => e
         model.abort_operation
@@ -59,7 +61,6 @@ module VisFiletsGenerator
           tige_group = apply_chamfer_rod(model, tige_group, tige_profile.r_major, tige_profile.r_minor,
                                          lc, length_tige, 0.0, nth, uf)
         end
-
       end
 
       if ecrou_group
@@ -71,7 +72,6 @@ module VisFiletsGenerator
           ecrou_group = apply_chamfer_nut(model, ecrou_group, r_bore_min, lc, length_ecrou,
                                           x_off_ecrou, nth, uf)
         end
-
       end
 
       # Ramener l'ecrou a l'origine apres chanfrein
@@ -216,6 +216,218 @@ module VisFiletsGenerator
       end
       model.commit_operation
       result.name = "Ecrou #{format_name(params)}"
+      result
+    end
+
+    # =========================================================================
+    # Taraud — bore rod fileteé + cylindre plein + prisme carré
+    #
+    # Geometrie (bas → haut) :
+    #   z = 0          .. length_taraud  : bore rod (filet interne, profil ecrou)
+    #   z = length_taraud .. +D          : cylindre plein (rayon D/2)
+    #   z = length_taraud+D .. +0.45*D  : prisme carre (cote 0.72*D)
+    #
+    # Les trois parties sont unies par boolean. Si l'union echoue (Pro/Eneroth
+    # requis), les 3 groupes sont conserves separes avec des noms explicites.
+    # =========================================================================
+    def self.generate_taraud(params, model, x_off = 0.0)
+      d      = params['d'].to_f
+      pitch  = params['pitch'].to_f
+      length = params.fetch('length_taraud', 20.0).to_f
+      gap    = params['gap'].to_f
+
+      max_angle      = params.fetch('max_overhang_angle', 45.0).to_f
+      min_core_ratio = params.fetch('min_core_pct', 70.0).to_f / 100.0
+      ext_prof  = make_profile(params['profile_type'], d / 2.0, pitch, max_angle, min_core_ratio)
+      r_bore_max = ext_prof.r_major + gap
+      r_bore_min = ext_prof.r_minor + gap
+      bore_prof  = make_profile_custom(params['profile_type'], r_bore_max, r_bore_min, pitch, max_angle)
+
+      uf    = unit_factor
+      nth   = params['n_theta'].to_i
+      # Cylindre de degagement : legerement plus petit que le diametre interieur du filet
+      r_cyl = ext_prof.r_minor * 0.95
+      h_cyl = d
+      sq_hs = (r_cyl / Math.sqrt(2.0)) * 0.9   # inscrit dans le cylindre, 10% marge
+      h_sq  = d * 0.45
+
+      label = format_name_tap(params)
+
+      # 1. Bore rod fileté — allongé pour compenser le cône de pointe (lc = r_bore_max)
+      length_rod = length + r_bore_max * 1.1
+      bore_rod = generate_tige(params, model, x_off, bore_prof, length_rod)
+
+      # 2. Chanfrein d'entree en bas — meme technique que apply_chamfer_rod mais a z=0
+      bore_rod = apply_chamfer_tap_bottom(model, bore_rod, r_bore_max, r_bore_min, pitch, x_off, nth, uf)
+
+      # 3. Cylindre de degagement
+      cyl = generate_plain_cylinder(model, x_off, r_cyl, length, h_cyl, nth, uf)
+
+      # 4. Prisme carre avec croix d'alignement
+      sq = generate_square_prism(model, x_off, sq_hs, length + h_cyl, h_sq, uf)
+
+      # 5. Union booléenne : bore_rod + cyl + sq
+      model.start_operation('Tap union', true)
+      merged = solid_union(model, bore_rod, cyl)
+      if merged
+        merged2 = solid_union(model, merged, sq)
+        if merged2
+          model.commit_operation
+          merged2.name = "Tap #{label}"
+          apply_tap_color(model, merged2, params)
+          return merged2
+        end
+      end
+      model.abort_operation
+
+      # Fallback : 3 groupes separes
+      bore_rod.name = "Tap #{label} — Thread"  if bore_rod.valid?
+      cyl.name      = "Tap #{label} — Shank"   if cyl.valid?
+      sq.name       = "Tap #{label} — Square"  if sq.valid?
+      apply_tap_color(model, bore_rod, params) if bore_rod.valid?
+      apply_tap_color(model, cyl,      params) if cyl.valid?
+      apply_tap_color(model, sq,       params) if sq.valid?
+      UI.messagebox(
+        "Tap: boolean union failed (SketchUp Pro or Eneroth Solid Tools required).\n" \
+        "3 separate groups created — use the Thread group as subtraction tool.",
+        MB_OK
+      )
+      bore_rod
+    end
+
+    # Assigne la couleur du tap depuis params['tap_color'] (hex '#RRGGBB').
+    # Chaine vide ou absente = pas de couleur assignée.
+    def self.apply_tap_color(model, group, params)
+      hex = params['tap_color'].to_s
+      return unless hex =~ /\A#[0-9a-fA-F]{6}\z/
+      mat = model.materials['Tap'] || model.materials.add('Tap')
+      mat.color = Sketchup::Color.new(hex[1,2].to_i(16), hex[3,2].to_i(16), hex[5,2].to_i(16))
+      group.material = mat
+    rescue; end
+
+
+    # Cylindre plein, de z_bot à z_bot+height, rayon r, centré en (x_off, 0).
+    def self.generate_plain_cylinder(model, x_off, r, z_bot, height, nth, uf)
+      mesh = Geom::PolygonMesh.new(2 * nth + 2, 4 * nth)
+      b_idx = Array.new(nth)
+      t_idx = Array.new(nth)
+      nth.times do |i|
+        theta = 2.0 * Math::PI * i / nth
+        ct = Math.cos(theta); st = Math.sin(theta)
+        b_idx[i] = mesh.add_point(Geom::Point3d.new((x_off + r*ct)*uf, r*st*uf,          z_bot         *uf))
+        t_idx[i] = mesh.add_point(Geom::Point3d.new((x_off + r*ct)*uf, r*st*uf, (z_bot + height)*uf))
+      end
+      c_bot = mesh.add_point(Geom::Point3d.new(x_off*uf, 0,          z_bot         *uf))
+      c_top = mesh.add_point(Geom::Point3d.new(x_off*uf, 0, (z_bot + height)*uf))
+      nth.times do |i|
+        i2 = (i + 1) % nth
+        mesh.add_polygon(c_bot, b_idx[i2], b_idx[i])       # fond   -Z
+        mesh.add_polygon(b_idx[i], b_idx[i2], t_idx[i2])   # paroi
+        mesh.add_polygon(b_idx[i], t_idx[i2], t_idx[i])
+        mesh.add_polygon(c_top, t_idx[i],  t_idx[i2])      # dessus +Z
+      end
+      group = model.entities.add_group
+      group.entities.fill_from_mesh(mesh, true, 0)
+      group
+    end
+
+    # Prisme a section carree, de z_bot a z_bot+height, demi-cote half_s, centre en (x_off, 0).
+    # Coins (sens anti-horaire depuis le dessus) : NE, NO, SO, SE.
+    def self.generate_square_prism(model, x_off, half_s, z_bot, height, uf)
+      s  = half_s * uf
+      xc = x_off  * uf
+      zb = z_bot  * uf
+      zt = (z_bot + height) * uf
+      b = [Geom::Point3d.new(xc+s,  s, zb), Geom::Point3d.new(xc-s,  s, zb),
+           Geom::Point3d.new(xc-s, -s, zb), Geom::Point3d.new(xc+s, -s, zb)]
+      t = [Geom::Point3d.new(xc+s,  s, zt), Geom::Point3d.new(xc-s,  s, zt),
+           Geom::Point3d.new(xc-s, -s, zt), Geom::Point3d.new(xc+s, -s, zt)]
+      mesh = Geom::PolygonMesh.new(8, 12)
+      bi = b.map { |p| mesh.add_point(p) }
+      ti = t.map { |p| mesh.add_point(p) }
+      mesh.add_polygon(bi[0], bi[3], bi[2]); mesh.add_polygon(bi[0], bi[2], bi[1])  # fond -Z
+      mesh.add_polygon(ti[0], ti[1], ti[2]); mesh.add_polygon(ti[0], ti[2], ti[3])  # dessus +Z
+      4.times do |i|
+        i2 = (i + 1) % 4
+        mesh.add_polygon(bi[i], bi[i2], ti[i2])
+        mesh.add_polygon(bi[i], ti[i2], ti[i])
+      end
+      group = model.entities.add_group
+      group.entities.fill_from_mesh(mesh, true, 0)
+      group
+    end
+
+    # Union booléenne portable Pro / Eneroth.
+    # Retourne le groupe résultant (a, modifié, b consommé), ou nil si échec.
+    def self.solid_union(model, a, b)
+      if a.respond_to?(:union)
+        result = a.union(b)
+        (result == false || result.nil?) ? nil : result
+      else
+        begin
+          require 'Eneroth Solid Tools/eneroth_solid_tools'
+          Eneroth::SolidTools.union(a, b)
+        rescue LoadError
+          b.erase! if b.valid?
+          nil
+        end
+      end
+    end
+
+    def self.format_name_tap(params)
+      d     = params['d'].to_f
+      pitch = params['pitch'].to_f
+      len   = params.fetch('length_taraud', 20.0).to_f
+      type  = params['profile_type'] == 'iso' ? 'ISO' : 'FDM'
+      d_str = d == d.to_i ? d.to_i.to_s : d.to_s
+      "M#{d_str}x#{pitch} L#{len.to_i} #{type}"
+    end
+
+    # Chanfrein d'entree conique en bas du tap.
+    # Outil : cone plein — apex au centre (r=0, z=0), base a z=lc avec ring D(r_bore_max)
+    # entouree d'un cylindre externe r_outer jusqu'en bas.
+    # lc = r_bore_max → cone 45° exact qui coupe jusqu'au centre en z=0.
+    # Geometrie (nth triangles fans depuis l'apex + cylindre ext + dessus) :
+    #   apex(0,0)  B(r_outer,0)  C(r_outer,lc)  D(r_bore_max,lc)
+    def self.apply_chamfer_tap_bottom(model, group, r_bore_max, r_bore_min, pitch, x_off, nth, uf)
+      lc      = r_bore_max       # hauteur = rayon → cone 45°, coupe jusqu'au centre en z=0
+      r_outer = r_bore_max * 1.5
+
+      b_idx = Array.new(nth)
+      c_idx = Array.new(nth)
+      d_idx = Array.new(nth)
+
+      mesh   = Geom::PolygonMesh.new(nth * 3 + 1, nth * 6)
+      apex_i = mesh.add_point(Geom::Point3d.new(x_off * uf, 0, 0))
+
+      nth.times do |i|
+        theta    = 2.0 * Math::PI * i / nth
+        ct = Math.cos(theta); st = Math.sin(theta)
+        b_idx[i] = mesh.add_point(Geom::Point3d.new((x_off + r_outer    * ct) * uf, r_outer    * st * uf, 0))
+        c_idx[i] = mesh.add_point(Geom::Point3d.new((x_off + r_outer    * ct) * uf, r_outer    * st * uf, lc * uf))
+        d_idx[i] = mesh.add_point(Geom::Point3d.new((x_off + r_bore_max * ct) * uf, r_bore_max * st * uf, lc * uf))
+      end
+
+      nth.times do |i|
+        i2 = (i + 1) % nth
+        mesh.add_polygon(apex_i, b_idx[i2], b_idx[i])     # fond disk  -Z (z=0)
+        mesh.add_polygon(b_idx[i], b_idx[i2], c_idx[i2])  # paroi ext  +R
+        mesh.add_polygon(b_idx[i], c_idx[i2], c_idx[i])
+        mesh.add_polygon(c_idx[i], c_idx[i2], d_idx[i2])  # dessus     +Z (z=lc)
+        mesh.add_polygon(c_idx[i], d_idx[i2], d_idx[i])
+        mesh.add_polygon(apex_i, d_idx[i], d_idx[i2])     # cone 45°  (inward normal)
+      end
+
+      model.start_operation('Tap chamfer', true)
+      tool = model.entities.add_group
+      tool.entities.fill_from_mesh(mesh, true, 0)
+      result = solid_subtract(model, group, tool)
+      if result.nil?
+        tool.erase! if tool.valid?
+        model.abort_operation
+        return group
+      end
+      model.commit_operation
       result
     end
 
@@ -542,8 +754,10 @@ module VisFiletsGenerator
     private_class_method :unit_factor, :compute_scale,
                          :make_profile, :make_profile_custom,
                          :build_columns, :apply_chamfer_rod, :apply_chamfer_nut,
-                         :solid_subtract, :cleanup_coplanar_edges,
-                         :generate_hex_prism,
+                         :solid_subtract, :solid_union, :cleanup_coplanar_edges,
+                         :generate_hex_prism, :generate_plain_cylinder,
+                         :generate_square_prism, :apply_chamfer_tap_bottom,
+                         :apply_tap_color, :format_name_tap,
                          :pad_columns!, :build_verts, :add_center_lines_scaled, :format_name
 
   end
