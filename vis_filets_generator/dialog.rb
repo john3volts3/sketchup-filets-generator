@@ -11,7 +11,7 @@ module VisFiletsGenerator
     DIALOG_TITLE = 'Vis & Filets — Generator'.freeze
     PREF_KEY     = 'VisFiletsGenerator'.freeze
 
-    HTML_TEMPLATE = <<~'HTML'
+    HTML_TEMPLATE = <<'HTML'
       <!DOCTYPE html>
       <html>
       <head>
@@ -431,7 +431,7 @@ module VisFiletsGenerator
       </script>
       </body>
       </html>
-    HTML
+HTML
 
     # -------------------------------------------------------------------------
     # Persistance des parametres (registre SketchUp)

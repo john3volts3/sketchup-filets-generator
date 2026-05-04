@@ -421,6 +421,27 @@ Ajout de `oninput` en plus de `onchange` sur le champ Gap — sauvegarde à chaq
 - `vis_filets_generator/main.rb`
 - `test_vis_filets.rb`
 
+## Session du 2026-05-04 (fix compat) — v1.9.2 Ruby 2.2
+
+### Fix : compatibilité SketchUp 2017 (Ruby 2.2)
+
+Trois syntaxes Ruby 2.3+ remplacées par des équivalents Ruby 2.0+ :
+
+- **`&.` (safe navigation operator)** dans `geometry.rb` (3 occurrences) :
+  - `tige_group&.valid?` → `!tige_group.nil? && tige_group.valid?`
+  - `ecrou_group&.valid?` → `!ecrou_group.nil? && ecrou_group.valid?`
+- **`<<~` (squiggly heredoc)** dans `dialog.rb` et `test_vis_filets.rb` :
+  - Remplacé par `<<'HTML'` (heredoc standard)
+  - Délimiteur de fermeture `HTML` ramené en colonne 0 (exigence Ruby pour `<<`)
+
+Testé et validé dans SketchUp 2017.
+
+### Fichiers modifiés
+- `vis_filets_generator/geometry.rb`
+- `vis_filets_generator/dialog.rb`
+- `test_vis_filets.rb`
+- `build/vis_filets_generator.rbz` (reconstruit)
+
 ---
 
 ## Sources et références utilisées

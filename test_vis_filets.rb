@@ -10,7 +10,7 @@ module VFGTest
 
   LOG_FILE = 'P:/develop/2026/claude/sketchup-filets/TEST_LOG.md'
 
-  HTML = <<~'HTML'
+  HTML = <<'HTML'
     <!DOCTYPE html><html><head><meta charset="utf-8"><style>
     *{box-sizing:border-box;margin:0;padding:0}
     body{font-family:Arial,sans-serif;font-size:13px;background:#f4f4f4;padding:10px}
@@ -80,7 +80,7 @@ module VFGTest
       if(typeof sketchup!=='undefined') sketchup.ready();
     }
     </script></body></html>
-  HTML
+HTML
 
   # ── Default params ───────────────────────────────────────────────────────────
 

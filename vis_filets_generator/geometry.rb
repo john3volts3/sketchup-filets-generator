@@ -72,7 +72,7 @@ module VisFiletsGenerator
           saved_name = tige_group.name
           tige_group = apply_chamfer_rod(model, tige_group, tige_profile.r_major, tige_profile.r_minor,
                                          lc, length_tige, 0.0, nth, uf)
-          tige_group.name = saved_name if tige_group&.valid?
+          tige_group.name = saved_name if !tige_group.nil? && tige_group.valid?
         end
       end
 
@@ -86,12 +86,12 @@ module VisFiletsGenerator
           r_bore_min  = ecrou_profile.r_minor + gap
           ecrou_group = apply_chamfer_nut(model, ecrou_group, r_bore_min, lc, length_ecrou,
                                           x_off_ecrou, nth, uf)
-          ecrou_group.name = saved_name if ecrou_group&.valid?
+          ecrou_group.name = saved_name if !ecrou_group.nil? && ecrou_group.valid?
         end
       end
 
       # Ramener l'ecrou a l'origine apres chanfrein
-      if ecrou_group&.valid? && x_off_ecrou != 0.0
+      if !ecrou_group.nil? && ecrou_group.valid? && x_off_ecrou != 0.0
         model.start_operation('Move nut', true)
         ecrou_group.transform!(Geom::Transformation.translation(
           Geom::Vector3d.new(-x_off_ecrou * uf, 0, 0)
