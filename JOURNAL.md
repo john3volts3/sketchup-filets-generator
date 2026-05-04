@@ -387,6 +387,42 @@ Création du plugin SketchUp `vis_filets_generator` — générateur paramétriq
 
 ---
 
+## Session du 2026-05-04 (suite) — v1.9.2
+
+### Traduction complète EN (dialog.rb, geometry.rb, main.rb, vis_filets_generator.rb)
+
+Tous les termes français visibles par l'utilisateur traduits en anglais :
+- Titre dialog : `Vis & Filets — Generateur` → `Vis & Filets — Generator`
+- Bouton : `Generer` → `Generate`
+- Menu : `Generer...` → `Generate…`
+- Noms de groupes : `Tige …` → `Rod …`, `Ecrou …` → `Nut …`
+- Noms d'opérations undo : `Deplacer ecrou` → `Move nut`, `Ecrou boolean` → `Nut boolean`, `Chanfrein tige` → `Rod chamfer`, `Chanfrein ecrou` → `Nut chamfer`, `Vis & Filets` → `Thread Generator`
+- Messages d'erreur : traduits en anglais
+- Description extension : traduite en anglais
+
+### Fix : groupes renommés "Difference" après chanfrein (geometry.rb)
+
+Le boolean subtract de SketchUp renommait le groupe résultat "Difference".
+Correction : nom sauvegardé avant `apply_chamfer_rod` / `apply_chamfer_nut`, restauré sur le groupe résultat.
+
+### Fix : Gap sauvegardé immédiatement (dialog.rb)
+
+Ajout de `oninput` en plus de `onchange` sur le champ Gap — sauvegarde à chaque frappe, pas seulement sur perte de focus.
+
+### Test runner v1.9.1 → v1.9.2 (test_vis_filets.rb)
+
+- Correction affichage premier test : `advance.call` déclenché via `sketchup.ready()` depuis `window.onload`
+- 47 tests couvrant rod, nut, tap, FDM, combinés, UI, status bar, noms anglais
+
+### Fichiers modifiés
+- `vis_filets_generator.rb` (version → 1.9.2)
+- `vis_filets_generator/dialog.rb`
+- `vis_filets_generator/geometry.rb`
+- `vis_filets_generator/main.rb`
+- `test_vis_filets.rb`
+
+---
+
 ## Sources et références utilisées
 
 - ISO 261:1998 — *ISO general purpose metric screw threads — General plan*

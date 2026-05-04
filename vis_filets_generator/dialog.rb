@@ -8,7 +8,7 @@ require 'cgi'
 module VisFiletsGenerator
   module DialogManager
 
-    DIALOG_TITLE = 'Vis & Filets — Generateur'.freeze
+    DIALOG_TITLE = 'Vis & Filets — Generator'.freeze
     PREF_KEY     = 'VisFiletsGenerator'.freeze
 
     HTML_TEMPLATE = <<~'HTML'
@@ -110,7 +110,7 @@ module VisFiletsGenerator
         <h3>Options</h3>
         <div class="row" id="gap_row">
           <div class="lbl">Gap (mm)</div>
-          <input type="text" id="gap" value="0.3" min="0" step="0.05" onchange="onGapChange()">
+          <input type="text" id="gap" value="0.3" min="0" step="0.05" oninput="onGapChange()" onchange="onGapChange()">
         </div>
         <div class="row dim" id="tap_color_row">
           <div class="lbl">Tap color</div>
@@ -141,7 +141,7 @@ module VisFiletsGenerator
         </div>
       </div>
 
-      <button id="btn" onclick="doGenerate()">Generer</button>
+      <button id="btn" onclick="doGenerate()">Generate</button>
       <div class="err" id="err"></div>
 
       <script>
@@ -557,7 +557,7 @@ module VisFiletsGenerator
           json_str = CGI.unescape(encoded.to_s)
           handle_generate(json_str)
         rescue => e
-          UI.messagebox("Erreur decodage : #{e.message}", MB_OK)
+          UI.messagebox("Decode error: #{e.message}", MB_OK)
         end
       end
       dlg.add_action_callback('save_gap') do |_dlg, encoded|
@@ -575,7 +575,7 @@ module VisFiletsGenerator
       save_defaults(params)
       Geometry.generate(params, Sketchup.active_model)
     rescue JSON::ParserError => e
-      UI.messagebox("Erreur JSON : #{e.message}", MB_OK)
+      UI.messagebox("JSON error: #{e.message}", MB_OK)
     end
 
     private_class_method :read_defaults, :save_defaults, :detect_tap_color, :build_html,

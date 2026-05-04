@@ -34,7 +34,7 @@ module VisFiletsGenerator
 
       x_off_ecrou = (params['create_tige'] && params['create_ecrou']) ? (d * 2.5 + gap) : 0.0
 
-      model.start_operation('Vis & Filets', true)
+      model.start_operation('Thread Generator', true)
       begin
         if params['create_tige']
           Sketchup.status_text = 'Vis & Filets — Threaded rod: building columns…'
@@ -53,7 +53,7 @@ module VisFiletsGenerator
         model.abort_operation
         Sketchup.status_text = ''
         UI.messagebox(
-          "Erreur de generation :\n#{e.message}\n\n#{e.backtrace.first(3).join("\n")}",
+          "Generation error:\n#{e.message}\n\n#{e.backtrace.first(3).join("\n")}",
           MB_OK
         )
         return
@@ -69,8 +69,10 @@ module VisFiletsGenerator
 
         if params['chamfer']
           Sketchup.status_text = 'Vis & Filets — Threaded rod: chamfer…'
+          saved_name = tige_group.name
           tige_group = apply_chamfer_rod(model, tige_group, tige_profile.r_major, tige_profile.r_minor,
                                          lc, length_tige, 0.0, nth, uf)
+          tige_group.name = saved_name if tige_group&.valid?
         end
       end
 
@@ -80,15 +82,17 @@ module VisFiletsGenerator
 
         if params['chamfer']
           Sketchup.status_text = 'Vis & Filets — Hex nut: chamfer…'
+          saved_name  = ecrou_group.name
           r_bore_min  = ecrou_profile.r_minor + gap
           ecrou_group = apply_chamfer_nut(model, ecrou_group, r_bore_min, lc, length_ecrou,
                                           x_off_ecrou, nth, uf)
+          ecrou_group.name = saved_name if ecrou_group&.valid?
         end
       end
 
       # Ramener l'ecrou a l'origine apres chanfrein
       if ecrou_group&.valid? && x_off_ecrou != 0.0
-        model.start_operation('Deplacer ecrou', true)
+        model.start_operation('Move nut', true)
         ecrou_group.transform!(Geom::Transformation.translation(
           Geom::Vector3d.new(-x_off_ecrou * uf, 0, 0)
         ))
@@ -162,7 +166,7 @@ module VisFiletsGenerator
 
       group = model.entities.add_group
       group.entities.fill_from_mesh(mesh, true, 0)
-      group.name = "Tige #{format_name(params)}"
+      group.name = "Rod #{format_name(params)}"
       group.transform!(Geom::Transformation.scaling(ORIGIN, 1.0 / sc))
       group
     end
@@ -223,16 +227,16 @@ module VisFiletsGenerator
 
       # 3. Boolean subtract : hex − bore_rod = nut
       Sketchup.status_text = 'Vis & Filets — Hex nut: boolean subtract…'
-      model.start_operation('Ecrou boolean', true)
+      model.start_operation('Nut boolean', true)
       result = solid_subtract(model, hex_group, bore_rod)
       if result.nil?
         bore_rod.erase! if bore_rod.valid?
         model.abort_operation
-        UI.messagebox('Écrou : soustraction booléenne échouée — écrou sans alésage.', MB_OK)
+        UI.messagebox('Nut: boolean subtract failed — nut without bore.', MB_OK)
         return hex_group
       end
       model.commit_operation
-      result.name = "Ecrou #{format_name(params)}"
+      result.name = "Nut #{format_name(params)}"
       result
     end
 
@@ -640,14 +644,14 @@ module VisFiletsGenerator
         mesh.add_polygon(a_idx[i], d_idx[i2], a_idx[i2])
       end
 
-      model.start_operation('Chanfrein tige', true)
+      model.start_operation('Rod chamfer', true)
       tool = model.entities.add_group
       tool.entities.fill_from_mesh(mesh, true, 0)
       result = solid_subtract(model, group, tool)
       if result.nil?
         tool.erase! if tool.valid?
         model.abort_operation
-        UI.messagebox('Chanfrein tige : opération booléenne échouée.', MB_OK)
+        UI.messagebox('Rod chamfer: boolean operation failed.', MB_OK)
         return group
       end
       model.commit_operation
@@ -681,7 +685,7 @@ module VisFiletsGenerator
 
       if zb >= zc
         UI.messagebox(
-          "Chanfrein écrou : hauteur chanfrein (#{lc.round(2)} mm) trop grande pour cet écrou (#{length.round(2)} mm). Ignoré.",
+          "Nut chamfer: chamfer height (#{lc.round(2)} mm) too large for this nut (#{length.round(2)} mm). Ignored.",
           MB_OK
         )
         return group
@@ -715,15 +719,14 @@ module VisFiletsGenerator
         mesh.add_polygon(ctop,    d_idx[i],   d_idx[i2])      # cap haut  +Z
       end
 
-      model.start_operation('Chanfrein ecrou', true)
+      model.start_operation('Nut chamfer', true)
       tool = model.entities.add_group
       tool.entities.fill_from_mesh(mesh, true, 0)
-      tool.name = 'DEBUG_sablier_ecrou'
+      tool.name = 'DEBUG_hourglass_nut'
 
       if DEBUG_CHAMFER_NUT
-        # Mode debug : sablier laisse visible, pas de subtract
         model.commit_operation
-        puts '[VFG DEBUG] Sablier ecrou construit et laisse visible (DEBUG_CHAMFER_NUT=true)'
+        puts '[VFG DEBUG] Nut hourglass tool built and left visible (DEBUG_CHAMFER_NUT=true)'
         return group
       end
 
@@ -731,7 +734,7 @@ module VisFiletsGenerator
       if result.nil?
         tool.erase! if tool.valid?
         model.abort_operation
-        UI.messagebox('Chanfrein écrou : opération booléenne échouée.', MB_OK)
+        UI.messagebox('Nut chamfer: boolean operation failed.', MB_OK)
         return group
       end
       model.commit_operation
