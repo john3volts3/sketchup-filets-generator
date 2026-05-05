@@ -444,6 +444,21 @@ Testé et validé dans SketchUp 2017.
 
 ---
 
+## Session du 2026-05-05 — Livraison v1.9.2
+
+### Première publication sur Sketchucation
+
+- Rédaction des Release notes pour la publication Sketchucation (première mise en ligne du plugin).
+- Mise à jour des références de version `v1.9.0` → `v1.9.2` dans `README.md` et `MANUEL.md`.
+- Reconstruction du `.rbz` : `build/vis_filets_generator_v1.9.2.rbz`.
+
+### Fichiers modifiés
+- `README.md`
+- `MANUEL.md`
+- `build/vis_filets_generator_v1.9.2.rbz` (reconstruit)
+
+---
+
 ## Sources et références utilisées
 
 - ISO 261:1998 — *ISO general purpose metric screw threads — General plan*

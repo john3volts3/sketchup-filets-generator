@@ -1,4 +1,4 @@
-# User Manual — vis_filets_generator v1.9.0
+# User Manual — vis_filets_generator v1.9.2
 
 ▶️ **[Video demo on YouTube](https://youtu.be/WcOK8VdVc-E)**
 
@@ -25,7 +25,7 @@
 
 ## Installation
 
-1. Download `build/vis_filets_generator_v1.9.0.rbz`
+1. Download `build/vis_filets_generator_v1.9.2.rbz`
 2. In SketchUp: **Window → Extension Manager → Install Extension**
 3. Select the `.rbz` file → click **Install**
 4. Restart SketchUp

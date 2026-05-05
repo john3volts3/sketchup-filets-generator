@@ -126,7 +126,7 @@ vis_filets_generator/
   geometry.rb                  # PolygonMesh generation (rod + nut + tap)
   dialog.rb                    # UI (WebDialog / HtmlDialog)
 build/
-  vis_filets_generator_v1.9.0.rbz   # Installable extension
+  vis_filets_generator_v1.9.2.rbz   # Installable extension
 ```
 
 ---
