@@ -570,3 +570,5 @@ Testé et validé dans SketchUp 2017.
 - Release GitHub **v1.10.0** créée (tag `v1.10.0`, asset `vis_filets_generator_v1.10.0.rbz`, notes EN + FR) : https://github.com/john3volts3/sketchup-filets-generator/releases/tag/v1.10.0
 
 - `.gitignore` : ajout de `pictures-Sketchucation-github/` (vidéos de démo, dont un fichier de 113 Mo > limite GitHub de 100 Mo).
+- `.gitignore` : ajout de `TEST_LOG.md` (résultats de tests locaux).
+- `tools/preview_dialog.rb` : ajouté au dépôt (aperçu du dialogue dans un navigateur, sans SketchUp) ; retrait de l'appel à `onGenerateDone` supprimé du dialogue.
