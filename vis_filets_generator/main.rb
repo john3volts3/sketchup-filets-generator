@@ -8,6 +8,7 @@ module VisFiletsGenerator
     require File.join(PLUGIN_DIR, 'vis_filets_generator', 'presets')
     require File.join(PLUGIN_DIR, 'vis_filets_generator', 'profiles')
     require File.join(PLUGIN_DIR, 'vis_filets_generator', 'geometry')
+    require File.join(PLUGIN_DIR, 'vis_filets_generator', 'place_tool')
     require File.join(PLUGIN_DIR, 'vis_filets_generator', 'dialog')
 
     menu = UI.menu('Extensions').add_submenu('Vis & Filets')

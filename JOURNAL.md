@@ -465,3 +465,63 @@ Testé et validé dans SketchUp 2017.
 - ISO 724:1993 — *ISO general-purpose metric screw threads — Basic dimensions*
 - Trimble SketchUp Ruby API : classe `Geom::PolygonMesh`, méthode `Sketchup::Entities#fill_from_mesh`
 - Documentation SketchUp Sage et forums Trimble : « Working with small geometry » (problématique tolérance 0,001″)
+
+---
+
+## Session du 2026-10-09 — Placement à la souris : bouton dédié
+
+### Dialogue : case « Place with mouse » remplacée par un bouton (dialog.rb)
+
+- Suppression de la case à cocher `place_with_mouse` (HTML, restauration dans `initForm`, `read_defaults`, `save_defaults`).
+- Barre de boutons : **Close · Place with mouse · Generate**.
+  - `Generate` → `doGenerate(false)` : pièces à l'origine, sélectionnées + zoom.
+  - `Place with mouse` → `doGenerate(true)` : activation de `PlaceTool` (boîte orange suivant la souris).
+- Les deux boutons sont désactivés pendant la génération ; `onGenerateDone()` les restaure.
+- Texte d'aide `place_with_mouse` mis à jour (rattaché au bouton via son id).
+- `handle_generate` (Ruby) inchangé : lit toujours `params['place_with_mouse']`.
+
+### Placement à la souris (session précédente interrompue, non journalisée)
+
+- Nouveau fichier `place_tool.rb` (`PlaceTool`), chargé par `main.rb`.
+
+### Ctrl+Z : une génération = une seule étape d'annulation (geometry.rb)
+
+- L'approche précédente (opérations transparentes chaînées via `start_op`) ne fonctionnait pas : opérations imbriquées dans « Thread Generator » et `abort_operation` sur des opérations transparentes.
+- Nouvelle approche : **une seule opération** `Thread Generator` englobe toute la génération (pièces, booléens, chanfreins, déplacement de l'écrou). Plus aucun `start_operation`/`commit_operation`/`abort_operation` dans les helpers (`generate_ecrou`, `generate_taraud`, `apply_chamfer_*`).
+- Échec d'un booléen : l'outil est effacé explicitement (au lieu de `abort_operation`).
+- Exceptions pendant les chanfreins désormais aussi capturées (abort de toute la génération).
+- Taraud : si la 1re union réussit mais pas la 2e, le groupe fusionné sert de groupe « Thread » du repli ; `solid_union` n'efface plus le cylindre quand aucun outil booléen n'est disponible.
+- Seul le clic de `PlaceTool` reste une opération transparente chaînée à la génération.
+
+### Placement : Esc = annulation complète (place_tool.rb, dialog.rb)
+
+- Esc (modèle ou dialogue), clic droit ou changement d'outil pendant le placement : les pièces générées sont **supprimées** (`Sketchup.undo` de l'opération unique de génération, différé via `UI.start_timer(0)`, seulement si les groupes existent encore — évite un double undo si l'utilisateur a fait Ctrl+Z pendant le placement).
+- `leave_at_origin` remplacé par `cancel_generation`, appelé depuis `deactivate` (point unique pour toutes les annulations).
+- Textes mis à jour : barre d'état, message orange du dialogue, aide du bouton « Place with mouse ».
+
+### Dialogue fermé au clic sur Generate / Place with mouse (dialog.rb)
+
+- `handle_generate` ferme le dialogue puis lance `run_generate` via `UI.start_timer(0.1, false)` (timer stoppé dès son déclenchement — contournement du bug de répétition avec messagebox).
+- Échec (exception, aucune pièce, erreur JSON/décodage) : le dialogue est rouvert (`show`) avec les paramètres sauvegardés.
+- Supprimé (devenu inutile) : état « Generating… » (`onGenerateDone`), message de placement dans le dialogue (`onPlacing`, `onPlaced`, `placing`), Esc dans le dialogue et callback/méthode `cancel_place`, CSS `.err.info` et `.primary[disabled]`.
+- Aide : texte ajouté pour le bouton Generate, texte de Place with mouse mis à jour.
+
+### Curseur d'attente pendant la génération (dialog.rb)
+
+- Le dialogue étant fermé, le cercle bleu (curseur occupé) n'apparaissait plus.
+- Ajout de `show_wait_cursor` (appelé au début de `run_generate`) : Windows uniquement, `SetCursor(LoadCursorW(0, IDC_WAIT))` via `Fiddle` (stdlib Ruby). SketchUp étant bloqué, le curseur reste jusqu'à la fin puis est restauré par SketchUp. Protégé par `rescue` (no-op sur Mac ou en cas d'erreur).
+
+### Petite fenêtre « Generating… » pendant le calcul (dialog.rb)
+
+- Nouvelle méthode `with_busy_window` + constante `BUSY_HTML` : HtmlDialog `STYLE_UTILITY` 300×100, centrée, texte statique.
+- Le focus est rendu immédiatement à SketchUp (`Sketchup.focus`, SU 2017+), et de nouveau après fermeture.
+- La génération démarre sur le signal JS `ready` (page dessinée) + 50 ms ; filet de sécurité : démarrage forcé après 1 s ; drapeau `started` contre un double lancement.
+- Fenêtre fermée dans un `ensure` (aussi en cas d'erreur). Sans HtmlDialog (SU < 2017) : ancien comportement (timer 0,1 s).
+- `handle_generate` utilise `with_busy_window` à la place du timer direct.
+
+### Fichiers modifiés
+- `vis_filets_generator/dialog.rb`
+- `vis_filets_generator/geometry.rb`
+- `vis_filets_generator/place_tool.rb` (nouveau)
+- `vis_filets_generator/main.rb`
+- `FSD.md`

@@ -22,7 +22,13 @@ module VisFiletsGenerator
     # =========================================================================
     # Point d'entree
     # =========================================================================
+    # Returns the groups created at the model root (all of them, including the
+    # tap fallback groups), or nil on error.
+    # The whole generation (parts, booleans, chamfers, nut move) is ONE undo
+    # operation: the helpers below never start an operation, so a single
+    # Ctrl+Z removes everything. Only the PlaceTool click is chained to it.
     def self.generate(params, model)
+      groups_before = model.entities.grep(Sketchup::Group)
       d     = params['d'].to_f
       gap   = params['gap'].to_f
       pitch = params['pitch'].to_f
@@ -48,6 +54,45 @@ module VisFiletsGenerator
           Sketchup.status_text = 'Vis & Filets — Tap: generating…'
           taraud_group = generate_taraud(params, model)
         end
+
+        max_angle      = params.fetch('max_overhang_angle', 45.0).to_f
+        min_core_ratio = params.fetch('min_core_pct', 70.0).to_f / 100.0
+        lc             = params.fetch('chamfer_height', pitch).to_f
+
+        if tige_group
+          length_tige  = params.fetch('length_tige', params.fetch('length', 50.0)).to_f
+          tige_profile = make_profile(params['profile_type'], d / 2.0, pitch, max_angle, min_core_ratio)
+
+          if params['chamfer']
+            Sketchup.status_text = 'Vis & Filets — Threaded rod: chamfer…'
+            saved_name = tige_group.name
+            tige_group = apply_chamfer_rod(model, tige_group, tige_profile.r_major, tige_profile.r_minor,
+                                           lc, length_tige, 0.0, nth, uf)
+            tige_group.name = saved_name if !tige_group.nil? && tige_group.valid?
+          end
+        end
+
+        if ecrou_group
+          length_ecrou  = params.fetch('length_ecrou', params.fetch('length', 8.0)).to_f
+          ecrou_profile = make_profile(params['profile_type'], d / 2.0, pitch, max_angle, min_core_ratio)
+
+          if params['chamfer']
+            Sketchup.status_text = 'Vis & Filets — Hex nut: chamfer…'
+            saved_name  = ecrou_group.name
+            r_bore_min  = ecrou_profile.r_minor + gap
+            ecrou_group = apply_chamfer_nut(model, ecrou_group, r_bore_min, lc, length_ecrou,
+                                            x_off_ecrou, nth, uf)
+            ecrou_group.name = saved_name if !ecrou_group.nil? && ecrou_group.valid?
+          end
+        end
+
+        # Ramener l'ecrou a l'origine apres chanfrein
+        if !ecrou_group.nil? && ecrou_group.valid? && x_off_ecrou != 0.0
+          ecrou_group.transform!(Geom::Transformation.translation(
+            Geom::Vector3d.new(-x_off_ecrou * uf, 0, 0)
+          ))
+        end
+
         model.commit_operation
       rescue => e
         model.abort_operation
@@ -59,47 +104,8 @@ module VisFiletsGenerator
         return
       end
 
-      max_angle      = params.fetch('max_overhang_angle', 45.0).to_f
-      min_core_ratio = params.fetch('min_core_pct', 70.0).to_f / 100.0
-      lc             = params.fetch('chamfer_height', pitch).to_f
-
-      if tige_group
-        length_tige  = params.fetch('length_tige', params.fetch('length', 50.0)).to_f
-        tige_profile = make_profile(params['profile_type'], d / 2.0, pitch, max_angle, min_core_ratio)
-
-        if params['chamfer']
-          Sketchup.status_text = 'Vis & Filets — Threaded rod: chamfer…'
-          saved_name = tige_group.name
-          tige_group = apply_chamfer_rod(model, tige_group, tige_profile.r_major, tige_profile.r_minor,
-                                         lc, length_tige, 0.0, nth, uf)
-          tige_group.name = saved_name if !tige_group.nil? && tige_group.valid?
-        end
-      end
-
-      if ecrou_group
-        length_ecrou  = params.fetch('length_ecrou', params.fetch('length', 8.0)).to_f
-        ecrou_profile = make_profile(params['profile_type'], d / 2.0, pitch, max_angle, min_core_ratio)
-
-        if params['chamfer']
-          Sketchup.status_text = 'Vis & Filets — Hex nut: chamfer…'
-          saved_name  = ecrou_group.name
-          r_bore_min  = ecrou_profile.r_minor + gap
-          ecrou_group = apply_chamfer_nut(model, ecrou_group, r_bore_min, lc, length_ecrou,
-                                          x_off_ecrou, nth, uf)
-          ecrou_group.name = saved_name if !ecrou_group.nil? && ecrou_group.valid?
-        end
-      end
-
-      # Ramener l'ecrou a l'origine apres chanfrein
-      if !ecrou_group.nil? && ecrou_group.valid? && x_off_ecrou != 0.0
-        model.start_operation('Move nut', true)
-        ecrou_group.transform!(Geom::Transformation.translation(
-          Geom::Vector3d.new(-x_off_ecrou * uf, 0, 0)
-        ))
-        model.commit_operation
-      end
-
       Sketchup.status_text = ''
+      (model.entities.grep(Sketchup::Group) - groups_before).select(&:valid?)
     end
 
     # =========================================================================
@@ -227,15 +233,12 @@ module VisFiletsGenerator
 
       # 3. Boolean subtract : hex − bore_rod = nut
       Sketchup.status_text = 'Vis & Filets — Hex nut: boolean subtract…'
-      model.start_operation('Nut boolean', true)
       result = solid_subtract(model, hex_group, bore_rod)
       if result.nil?
         bore_rod.erase! if bore_rod.valid?
-        model.abort_operation
         UI.messagebox('Nut: boolean subtract failed — nut without bore.', MB_OK)
         return hex_group
       end
-      model.commit_operation
       result.name = "Nut #{format_name(params)}"
       result
     end
@@ -293,18 +296,17 @@ module VisFiletsGenerator
 
       # 5. Union booléenne : bore_rod + cyl + sq
       Sketchup.status_text = 'Vis & Filets — Tap: boolean union…'
-      model.start_operation('Tap union', true)
       merged = solid_union(model, bore_rod, cyl)
       if merged
         merged2 = solid_union(model, merged, sq)
         if merged2
-          model.commit_operation
           merged2.name = "Tap #{label}"
           apply_tap_color(model, merged2, params)
           return merged2
         end
+        # Second union failed: thread + shank are already merged
+        bore_rod = merged
       end
-      model.abort_operation
 
       # Fallback : 3 groupes separes
       bore_rod.name = "Tap #{label} — Thread"  if bore_rod.valid?
@@ -394,7 +396,7 @@ module VisFiletsGenerator
           require 'Eneroth Solid Tools/eneroth_solid_tools'
           Eneroth::SolidTools.union(a, b)
         rescue LoadError
-          b.erase! if b.valid?
+          # b is kept: the tap fallback uses it as a separate group
           nil
         end
       end
@@ -444,16 +446,13 @@ module VisFiletsGenerator
         mesh.add_polygon(apex_i, d_idx[i], d_idx[i2])     # cone 45°  (inward normal)
       end
 
-      model.start_operation('Tap chamfer', true)
       tool = model.entities.add_group
       tool.entities.fill_from_mesh(mesh, true, 0)
       result = solid_subtract(model, group, tool)
       if result.nil?
         tool.erase! if tool.valid?
-        model.abort_operation
         return group
       end
-      model.commit_operation
       result
     end
 
@@ -644,17 +643,14 @@ module VisFiletsGenerator
         mesh.add_polygon(a_idx[i], d_idx[i2], a_idx[i2])
       end
 
-      model.start_operation('Rod chamfer', true)
       tool = model.entities.add_group
       tool.entities.fill_from_mesh(mesh, true, 0)
       result = solid_subtract(model, group, tool)
       if result.nil?
         tool.erase! if tool.valid?
-        model.abort_operation
         UI.messagebox('Rod chamfer: boolean operation failed.', MB_OK)
         return group
       end
-      model.commit_operation
       result
     end
 
@@ -719,13 +715,11 @@ module VisFiletsGenerator
         mesh.add_polygon(ctop,    d_idx[i],   d_idx[i2])      # cap haut  +Z
       end
 
-      model.start_operation('Nut chamfer', true)
       tool = model.entities.add_group
       tool.entities.fill_from_mesh(mesh, true, 0)
       tool.name = 'DEBUG_hourglass_nut'
 
       if DEBUG_CHAMFER_NUT
-        model.commit_operation
         puts '[VFG DEBUG] Nut hourglass tool built and left visible (DEBUG_CHAMFER_NUT=true)'
         return group
       end
@@ -733,11 +727,9 @@ module VisFiletsGenerator
       result = solid_subtract(model, group, tool)
       if result.nil?
         tool.erase! if tool.valid?
-        model.abort_operation
         UI.messagebox('Nut chamfer: boolean operation failed.', MB_OK)
         return group
       end
-      model.commit_operation
       result
     end
 

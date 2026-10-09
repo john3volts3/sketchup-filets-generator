@@ -33,6 +33,18 @@ Chaque mode (ISO / FDM) mémorise ses propres paramètres indépendamment — re
 
 Toutes les valeurs dimensionnelles sont dans l'**unité courante du modèle SketchUp** (mm, cm, m…).
 
+### 2.1 Boutons de génération et placement
+
+| Bouton | Comportement |
+|--------|--------------|
+| **Generate** | Génère les pièces à l'origine du modèle ; elles sont sélectionnées et la vue zoome dessus. |
+| **Place with mouse** | Génère les pièces à l'origine puis active `PlaceTool` : une boîte orange (bounding box des pièces) suit la souris avec l'inférence SketchUp ; un clic déplace les pièces à ce point. Esc (dans le modèle ou le dialogue), clic droit ou changement d'outil : **annulation** — la génération est défaite (`Sketchup.undo`), aucune pièce ne reste, comme si le bouton n'avait pas été cliqué. |
+| **Close** | Ferme le dialogue. |
+
+**Annulation (Ctrl+Z)** : toute la génération (pièces, booléens, chanfreins, retour de l'écrou) est une **seule opération** `Thread Generator` ; le clic de placement y est chaîné (opération transparente). Un seul Ctrl+Z supprime donc tout.
+
+Un clic sur **Generate** ou **Place with mouse** (champs valides) **ferme le dialogue**, puis une petite fenêtre « Generating… please wait » (HtmlDialog utilitaire, centrée, contenu statique car SketchUp est bloqué) s'affiche sans garder le focus (`Sketchup.focus`) ; la génération démarre quand cette fenêtre est dessinée (signal `ready`, ou au plus tard après 1 s) et la fenêtre se ferme à la fin, même en cas d'erreur (SketchUp < 2017 : pas de fenêtre, génération différée de 0,1 s) ; sous Windows, le curseur d'attente est forcé via `SetCursor`/`LoadCursorW` (user32, `Fiddle`) car SketchUp ne l'affiche pas de lui-même ; sans effet sur Mac). En cas d'échec (exception, aucune pièce créée), le message d'erreur est affiché puis le dialogue **se rouvre** avec les paramètres saisis. Si un champ est invalide, le dialogue reste ouvert avec le message d'erreur. Le mode de placement n'est pas mémorisé (choix à chaque clic).
+
 ---
 
 ## 3. Géométrie générée
@@ -93,6 +105,7 @@ vis_filets_generator/
   presets.rb                      # Tables ISO M3–M32 + FDM pitches
   profiles.rb                     # IsoProfile, PlasticProfile
   geometry.rb                     # Génération PolygonMesh
+  place_tool.rb                   # PlaceTool : placement des pièces à la souris
   dialog.rb                       # UI WebDialog / HtmlDialog
 ```
 
