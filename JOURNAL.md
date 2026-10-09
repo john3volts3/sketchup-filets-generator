@@ -547,3 +547,19 @@ Testé et validé dans SketchUp 2017.
 - `vis_filets_generator/dialog.rb`
 - `vis_filets_generator/geometry.rb`
 - `FSD.md`
+
+---
+
+## Session du 2026-10-09 — Livraison v1.10.0
+
+- Version `1.9.2` → `1.10.0` (`vis_filets_generator.rb`, `FSD.md`).
+- `README.md` (EN + FR) : section « Generate / Place with mouse », `place_tool.rb` dans la structure, nom du `.rbz`.
+- `MANUEL.md` (EN + FR) : version 1.10.0, chemin `.rbz`, schéma des boutons, section Générer réécrite (placement, orientation sur face, annulation, Ctrl+Z unique), procédure taraud avec Place with mouse.
+- `.rbz` reconstruit : `build/vis_filets_generator.rbz`.
+
+### Fichiers modifiés
+- `vis_filets_generator.rb`
+- `FSD.md`
+- `README.md`
+- `MANUEL.md`
+- `build/vis_filets_generator.rbz`

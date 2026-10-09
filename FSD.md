@@ -1,8 +1,8 @@
 # Spécifications fonctionnelles détaillées (FSD)
 
 **Projet** : Plugin SketchUp `vis_filets_generator` — Générateur de filets paramétriques
-**Version** : 1.9.2
-**Date** : 2026-05-04
+**Version** : 1.10.0
+**Date** : 2026-10-09
 
 ---
 

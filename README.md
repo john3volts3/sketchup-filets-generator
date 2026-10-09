@@ -46,6 +46,14 @@ Menu **Extensions → Vis & Filets → Generate…**
 
 > **Units**: all values are entered in the current SketchUp model unit. If the model is in metres, entering `10` generates a 10-metre diameter thread.
 
+### Generate / Place with mouse
+
+Both buttons close the dialog, show a small *Generating… please wait* window, then create the parts (the dialog reopens if the generation fails).
+
+- **Generate** — parts are created at the origin, selected and zoomed.
+- **Place with mouse** — an orange box per part follows the mouse. **On a face, the parts turn perpendicular to it**: rod and nut stand on the face, the **tap is sunk into it by its threaded length** (subtract it to get a threaded hole). Click to place. **Esc**, right-click or another tool cancels: nothing is created.
+- A whole generation (placement included) is **one undo step**: a single Ctrl+Z removes it.
+
 ## Thread profiles
 
 ### ISO metric
@@ -124,9 +132,10 @@ vis_filets_generator/
   presets.rb                   # ISO M3–M32 tables + FDM recommended pitches
   profiles.rb                  # IsoProfile (60°), PlasticProfile (angle-limited V)
   geometry.rb                  # PolygonMesh generation (rod + nut + tap)
+  place_tool.rb                # Placement with the mouse (perpendicular to faces)
   dialog.rb                    # UI (WebDialog / HtmlDialog)
 build/
-  vis_filets_generator_v1.9.2.rbz   # Installable extension
+  vis_filets_generator.rbz     # Installable extension
 ```
 
 ---
@@ -178,6 +187,14 @@ Menu **Extensions → Vis & Filets → Generate…**
 | 12 | **Min. core %D** | Plastique FDM uniquement — diamètre noyau minimum en % de D (défaut 70%) |
 
 > **Unité** : toutes les valeurs sont saisies dans l'unité courante du modèle SketchUp. Si le modèle est en mètres, taper `10` génère un filet de 10 mètres de diamètre.
+
+### Generate / Place with mouse
+
+Les deux boutons ferment le dialogue, affichent une petite fenêtre *Generating… please wait*, puis créent les pièces (le dialogue se rouvre si la génération échoue).
+
+- **Generate** — pièces créées à l'origine, sélectionnées et zoomées.
+- **Place with mouse** — une boîte orange par pièce suit la souris. **Sur une face, les pièces se placent perpendiculairement à celle-ci** : tige et écrou posés sur la face, **taraud enfoncé de sa longueur filetée** (à soustraire pour obtenir un trou taraudé). Clic pour placer. **Esc**, clic droit ou autre outil : annulation, rien n'est créé.
+- Une génération complète (placement compris) est **une seule étape d'annulation** : un seul Ctrl+Z la supprime.
 
 ## Profils de filet
 

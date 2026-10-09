@@ -1,4 +1,4 @@
-# User Manual — vis_filets_generator v1.9.2
+# User Manual — vis_filets_generator v1.10.0
 
 ▶️ **[Video demo on YouTube](https://youtu.be/WcOK8VdVc-E)**
 
@@ -25,7 +25,7 @@
 
 ## Installation
 
-1. Download `build/vis_filets_generator_v1.9.2.rbz`
+1. Download `build/vis_filets_generator.rbz`
 2. In SketchUp: **Window → Extension Manager → Install Extension**
 3. Select the `.rbz` file → click **Install**
 4. Restart SketchUp
@@ -60,7 +60,7 @@ The dialog remembers all your settings between sessions.
 │ Options                     │  Gap, Tap color, Chamfer,
 │                             │  Segments/turn, FDM params
 ├─────────────────────────────┤
-│        [ Generate ]         │
+│ [Close] [Place with mouse] [Generate] │
 └─────────────────────────────┘
 ```
 
@@ -151,9 +151,17 @@ The tap is designed to be **subtracted from any solid** to create a threaded hol
 
 1. Check the parts you want
 2. Set dimensions and options
-3. Click **Generate**
+3. Click **Generate** or **Place with mouse**
 
-All parts are generated at the **origin** (0, 0, 0). Move and position them as needed after generation.
+Both buttons close the dialog and show a small *Generating… please wait* window while SketchUp works (it does not take the focus). If the generation fails, the error is shown and the dialog reopens with your settings.
+
+- **Generate**: all parts are created at the **origin** (0, 0, 0), selected and zoomed.
+- **Place with mouse**: an orange box per part follows the mouse (SketchUp inference on points, edges and faces). Click to place the parts.
+  - **On a face** (also inside a group or component), the parts are turned **perpendicular to the face**: the threaded rod and the nut stand on it, the **tap is sunk into it by its threaded length** — the square drive stays outside, ready for the subtraction.
+  - Off a face, the parts stay vertical.
+  - **Esc**, right-click or choosing another tool **cancels**: the parts are removed, as if you had not clicked.
+
+A whole generation, placement included, is **one undo step**: a single **Ctrl+Z** removes everything.
 
 Each generated group is named (e.g. `Tap M10x1.5 L20 ISO`) and appears in the **Outliner**.
 
@@ -166,7 +174,7 @@ The tap is a **single watertight solid** ready for boolean subtraction.
 **Workflow:**
 
 1. Generate the tap (check ☑ Tap, set height = desired thread depth)
-2. Position the tap where you want the threaded hole — align the pointed tip on the entry face
+2. Position the tap where you want the threaded hole — easiest: **Place with mouse** and click on the entry face (the tap is sunk automatically by its threaded length); or move it manually and align the pointed tip on the entry face
 3. Select the tap, then use **Solid Tools → Subtract** (Pro) or **Eneroth Solid Tools → Subtract**:
    - Target = the workpiece
    - Tool = the tap
@@ -235,7 +243,7 @@ The tap is a **single watertight solid** ready for boolean subtraction.
 
 ---
 
-# Manuel utilisateur — vis_filets_generator v1.9.0
+# Manuel utilisateur — vis_filets_generator v1.10.0
 
 ▶️ **[Vidéo de démonstration sur YouTube](https://youtu.be/WcOK8VdVc-E)**
 
@@ -262,7 +270,7 @@ The tap is a **single watertight solid** ready for boolean subtraction.
 
 ## Installation
 
-1. Télécharger `build/vis_filets_generator_v1.9.0.rbz`
+1. Télécharger `build/vis_filets_generator.rbz`
 2. Dans SketchUp : **Fenêtre → Gestionnaire d'extensions → Installer l'extension**
 3. Sélectionner le fichier `.rbz` → cliquer **Installer**
 4. Redémarrer SketchUp
@@ -297,7 +305,7 @@ Le dialog mémorise tous les paramètres entre les sessions.
 │ Options                     │  Gap, Couleur taraud,
 │                             │  Chanfrein, Segments/tour…
 ├─────────────────────────────┤
-│        [ Générer ]          │
+│ [Close] [Place with mouse] [Generate] │
 └─────────────────────────────┘
 ```
 
@@ -388,9 +396,17 @@ Le taraud est conçu pour être **soustrait de n'importe quel solide** afin de c
 
 1. Cocher les pièces souhaitées
 2. Régler les dimensions et options
-3. Cliquer **Générer**
+3. Cliquer **Generate** ou **Place with mouse**
 
-Toutes les pièces sont générées à l'**origine** (0, 0, 0). Les déplacer et positionner ensuite.
+Les deux boutons ferment le dialogue et affichent une petite fenêtre *Generating… please wait* pendant le calcul (elle ne prend pas le focus). En cas d'échec, l'erreur est affichée et le dialogue se rouvre avec vos paramètres.
+
+- **Generate** : toutes les pièces sont créées à l'**origine** (0, 0, 0), sélectionnées et zoomées.
+- **Place with mouse** : une boîte orange par pièce suit la souris (inférence SketchUp sur points, arêtes et faces). Cliquer pour placer les pièces.
+  - **Sur une face** (y compris dans un groupe ou composant), les pièces sont orientées **perpendiculairement à la face** : la tige et l'écrou sont posés dessus, le **taraud est enfoncé de sa longueur filetée** — le carré d'entraînement reste dehors, prêt pour la soustraction.
+  - Hors d'une face, les pièces restent verticales.
+  - **Esc**, clic droit ou choix d'un autre outil **annule** : les pièces sont supprimées, comme si vous n'aviez pas cliqué.
+
+Une génération complète, placement compris, est **une seule étape d'annulation** : un seul **Ctrl+Z** supprime tout.
 
 Chaque groupe généré est nommé (ex. `Tap M10x1.5 L20 ISO`) et apparaît dans le **Gestionnaire de calques/groupes**.
 
@@ -403,7 +419,7 @@ Le taraud est un **solide watertight unique** prêt pour la soustraction boolée
 **Procédure :**
 
 1. Générer le taraud (cocher ☑ Tap, hauteur = profondeur de taraudage souhaitée)
-2. Positionner le taraud à l'emplacement du trou fileté — aligner la pointe sur la face d'entrée
+2. Positionner le taraud à l'emplacement du trou fileté — le plus simple : **Place with mouse** puis clic sur la face d'entrée (le taraud est enfoncé automatiquement de sa longueur filetée) ; ou le déplacer manuellement en alignant la pointe sur la face d'entrée
 3. Sélectionner le taraud, puis utiliser **Solid Tools → Subtract** (Pro) ou **Eneroth Solid Tools → Subtract** :
    - Cible = le volume à tarauder
    - Outil = le taraud
