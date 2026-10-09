@@ -2,3 +2,6 @@
 Thumbs.db
 .DS_Store
 .claude/settings.local.json
+
+# SketchUcation / GitHub media (videos too large for git)
+pictures-Sketchucation-github/

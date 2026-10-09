@@ -568,3 +568,5 @@ Testé et validé dans SketchUp 2017.
 
 - `build/` : conservés uniquement les `.rbz` publiés — `v1.9.2` (version publiée sur SketchUcation, identique au `.rbz` de la release du 2026-05-05) et `v1.10.0` (nouvelle copie versionnée). Supprimés : `v1.9.0` et `v1.9.1` (builds intermédiaires jamais publiés, non compatibles SketchUp 2017).
 - Release GitHub **v1.10.0** créée (tag `v1.10.0`, asset `vis_filets_generator_v1.10.0.rbz`, notes EN + FR) : https://github.com/john3volts3/sketchup-filets-generator/releases/tag/v1.10.0
+
+- `.gitignore` : ajout de `pictures-Sketchucation-github/` (vidéos de démo, dont un fichier de 113 Mo > limite GitHub de 100 Mo).
