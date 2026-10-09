@@ -572,3 +572,4 @@ Testé et validé dans SketchUp 2017.
 - `.gitignore` : ajout de `pictures-Sketchucation-github/` (vidéos de démo, dont un fichier de 113 Mo > limite GitHub de 100 Mo).
 - `.gitignore` : ajout de `TEST_LOG.md` (résultats de tests locaux).
 - `tools/preview_dialog.rb` : ajouté au dépôt (aperçu du dialogue dans un navigateur, sans SketchUp) ; retrait de l'appel à `onGenerateDone` supprimé du dialogue.
+- `for-sketchucation/V1-10.txt` : ajouté au dépôt (texte de mise à jour SketchUcation v1.10.0, EN + FR).

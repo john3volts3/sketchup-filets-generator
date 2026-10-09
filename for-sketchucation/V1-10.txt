@@ -1,0 +1,41 @@
+Version : 1.10.0
+
+Release notes (EN) :
+
+v1.10.0 — Place with mouse, perpendicular to faces
+
+NEW — Place with mouse
+• New "Place with mouse" button next to "Generate".
+• An orange box per part follows the mouse with SketchUp inference — click to place the parts.
+• On a face, the parts turn perpendicular to it (also on faces inside groups and components):
+  – threaded rod and hex nut stand on the face,
+  – the tap is sunk into the face by its threaded length, square drive outside: just subtract it to get a threaded hole.
+• Off a face, the parts stay vertical.
+• Esc, right-click or another tool cancels the placement: nothing is created.
+
+IMPROVED
+• Both buttons close the dialog; a small "Generating… please wait" window is shown during the computation (it does not take the focus). The dialog reopens with your settings if the generation fails.
+• One generation = one undo step: a single Ctrl+Z removes everything (booleans, chamfers and placement included).
+
+Compatible SketchUp 2017 and later. Boolean operations (nut, tap, chamfer) require SketchUp Pro or the free Eneroth Solid Tools.
+Demo: https://youtu.be/WcOK8VdVc-E
+
+Notes de version (FR, optionnel) :
+
+v1.10.0 — Placement à la souris, perpendiculaire aux faces
+
+NOUVEAU — Place with mouse
+• Nouveau bouton « Place with mouse » à côté de « Generate ».
+• Une boîte orange par pièce suit la souris avec l'inférence SketchUp — un clic place les pièces.
+• Sur une face, les pièces se placent perpendiculairement à celle-ci (y compris dans les groupes et composants) :
+  – tige filetée et écrou posés sur la face,
+  – le taraud est enfoncé de sa longueur filetée, carré d'entraînement dehors : il suffit de le soustraire pour obtenir un trou taraudé.
+• Hors d'une face, les pièces restent verticales.
+• Esc, clic droit ou autre outil annule le placement : rien n'est créé.
+
+AMÉLIORÉ
+• Les deux boutons ferment le dialogue ; une petite fenêtre « Generating… please wait » s'affiche pendant le calcul 
+
+AMÉLIORÉ
+• Les deux boutons ferment le dialogue ; une petite fenêtre « Generating… please wait » s'affiche pendant le calcul (sans prendre le focus). Le dialogue se rouvre avec vos paramètres si la génération échoue.
+• Une génération = une seule étape d'annulation : un seul Ctrl+Z supprime tout.
