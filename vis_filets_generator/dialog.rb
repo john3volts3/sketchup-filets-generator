@@ -165,7 +165,7 @@ var HINT={
   create_tige:'Create a threaded rod.',
   create_ecrou:'Create a hex nut (DIN 934 across flats for ISO sizes).',
   create_taraud:'Create a tap: threaded cutting tool to subtract from a part.',
-  place_with_mouse:'Closes the dialog and generates, then an orange box follows the mouse: click to place the parts there. Esc, right-click or another tool: cancel, nothing is created.',
+  place_with_mouse:'Closes the dialog and generates, then an orange box follows the mouse: click to place the parts there. On a face, the parts are turned perpendicular to it: rod and nut stand on it, the tap is sunk into it by its threaded length. Esc, right-click or another tool: cancel, nothing is created.',
   btn:'Closes the dialog and generates the parts at the origin, selected and zoomed. The dialog reopens if the generation fails.',
   tap_color:'Tap color: select an object in the model, then click the swatch to take its material color. × = no color.'
 };
@@ -816,7 +816,8 @@ HTML
       if groups.nil? || groups.empty?
         show
       elsif params['place_with_mouse']
-        Sketchup.active_model.select_tool(PlaceTool.new(groups))
+        tap_depth = params['create_taraud'] ? params['length_taraud'].to_f * Geometry.unit_factor : 0.0
+        Sketchup.active_model.select_tool(PlaceTool.new(groups, tap_depth))
       else
         PlaceTool.select_and_zoom(groups)
       end

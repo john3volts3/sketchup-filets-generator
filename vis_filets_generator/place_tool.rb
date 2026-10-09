@@ -1,9 +1,11 @@
 # vis_filets_generator/place_tool.rb
 # Placement of the freshly generated parts (created at the model origin).
 #
-# PlaceTool: an orange box the size of the parts follows the mouse (SketchUp
-# inference on points, edges and faces); a click moves the parts there in one
-# undo step. The real parts only move on the click, so the inference never
+# PlaceTool: an orange box per part follows the mouse (SketchUp inference on
+# points, edges and faces); a click moves the parts there in one undo step.
+# On a face, the parts are turned perpendicular to it (Z axis = face normal):
+# rod and nut stand on the face, the tap is sunk into it by its threaded
+# length (subtract it to get a threaded hole). Off a face: vertical, as built. The real parts only move on the click, so the inference never
 # snaps onto the parts being placed. Esc, right-click or another tool cancels:
 # the generation is undone, as if the button had never been clicked.
 
@@ -31,16 +33,17 @@ module VisFiletsGenerator
       model.active_view.zoom(groups)
     end
 
+    # tap_depth: threaded length of the tap (model length), the tap is sunk
+    # by this depth into the face.
     # on_done: optional proc called once when the placement is over (click or cancel)
-    def initialize(groups, &on_done)
-      @on_done = on_done
-      @groups = groups.select(&:valid?)
-      @ip     = Sketchup::InputPoint.new
-      @done   = false
-      bb = Geom::BoundingBox.new
-      @groups.each { |g| bb.add(g.bounds) }
-      # Box corners relative to the origin (= base point of the parts)
-      @corners = (0..7).map { |i| bb.corner(i) - ORIGIN }
+    def initialize(groups, tap_depth = 0.0, &on_done)
+      @on_done   = on_done
+      @groups    = groups.select(&:valid?)
+      @tap_depth = tap_depth.to_f
+      @ip        = Sketchup::InputPoint.new
+      @done      = false
+      # Box corners of each part, in the generation frame (origin, world axes)
+      @corners = @groups.map { |g| (0..7).map { |i| g.bounds.corner(i) } }
     end
 
     def activate
@@ -68,11 +71,11 @@ module VisFiletsGenerator
     def onLButtonDown(_flags, x, y, view)
       @ip.pick(view, x, y)
       return unless @ip.valid?
-      vec   = @ip.position - ORIGIN
       model = Sketchup.active_model
+      trans = part_transformations
       # Transparent: merged with the generation, one Ctrl+Z removes the parts
       model.start_operation('Place Thread Parts', true, false, true)
-      @groups.each { |g| g.transform!(Geom::Transformation.translation(vec)) if g.valid? }
+      @groups.each_with_index { |g, i| g.transform!(trans[i]) if g.valid? }
       model.commit_operation
       @done = true
       model.selection.clear
@@ -94,15 +97,16 @@ module VisFiletsGenerator
     def draw(view)
       @ip.draw(view) if @ip.display?
       return unless @ip.valid?
-      pts = box_points(@ip.position)
       view.drawing_color = 'orange'
       view.line_width    = 2
-      view.draw(GL_LINES, BOX_EDGES.flatten.map { |i| pts[i] })
+      boxes_points.each do |pts|
+        view.draw(GL_LINES, BOX_EDGES.flatten.map { |i| pts[i] })
+      end
     end
 
     def getExtents
       bb = Sketchup.active_model.bounds
-      box_points(@ip.position).each { |p| bb.add(p) } if @ip.valid?
+      boxes_points.each { |pts| pts.each { |p| bb.add(p) } } if @ip.valid?
       bb
     end
 
@@ -112,8 +116,42 @@ module VisFiletsGenerator
     BOX_EDGES = [[0, 1], [1, 3], [3, 2], [2, 0], [4, 5], [5, 7], [7, 6], [6, 4],
                  [0, 4], [1, 5], [2, 6], [3, 7]].freeze
 
-    def box_points(base)
-      @corners.map { |v| base + v }
+    # Placement frame at the input point: Z = normal of the face under the
+    # mouse (also inside groups/components), X = model red axis projected on
+    # the face. No face: world axes. Returns [transformation, on_face].
+    def placement
+      pt   = @ip.position
+      face = @ip.face
+      return [Geom::Transformation.translation(pt - ORIGIN), false] unless face
+      z = face.normal.transform(@ip.transformation)
+      return [Geom::Transformation.translation(pt - ORIGIN), false] unless z.valid?
+      z.normalize!
+      ref = z.parallel?(X_AXIS) ? Y_AXIS : X_AXIS
+      x = Geom::Vector3d.linear_combination(1.0, ref, -ref.dot(z), z)
+      x.normalize!
+      y = z * x
+      [Geom::Transformation.axes(pt, x, y, z), true]
+    end
+
+    def tap?(group)
+      group.name.to_s.start_with?('Tap ')
+    end
+
+    # Transformation of each part: placement frame, tap sunk into the face
+    def part_transformations
+      t, on_face = placement
+      @groups.map do |g|
+        if on_face && tap?(g) && @tap_depth > 0
+          t * Geom::Transformation.translation(Geom::Vector3d.new(0, 0, -@tap_depth))
+        else
+          t
+        end
+      end
+    end
+
+    def boxes_points
+      trans = part_transformations
+      @corners.each_with_index.map { |pts, i| pts.map { |p| p.transform(trans[i]) } }
     end
 
     # Removes the generated parts by undoing the generation (one single undo

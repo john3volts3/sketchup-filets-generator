@@ -768,7 +768,7 @@ module VisFiletsGenerator
     end
 
 
-    private_class_method :unit_factor, :compute_scale,
+    private_class_method :compute_scale,
                          :make_profile, :make_profile_custom,
                          :build_columns, :apply_chamfer_rod, :apply_chamfer_nut,
                          :solid_subtract, :solid_union, :cleanup_coplanar_edges,

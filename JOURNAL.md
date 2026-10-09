@@ -525,3 +525,25 @@ Testé et validé dans SketchUp 2017.
 - `vis_filets_generator/place_tool.rb` (nouveau)
 - `vis_filets_generator/main.rb`
 - `FSD.md`
+
+---
+
+## Session du 2026-10-09 (suite) — Placement perpendiculaire à la face survolée
+
+### place_tool.rb
+- Repère de placement calculé à chaque mouvement : Z = normale de la face survolée (`InputPoint#face`, normale transformée par `InputPoint#transformation` pour les faces dans des groupes/composants), X = axe rouge projeté sur la face (Y si normale ∥ X). Hors face : axes du modèle (comportement précédent).
+- Une boîte orange par pièce (au lieu d'une boîte globale).
+- Taraud (groupes dont le nom commence par « Tap ») enfoncé de sa longueur filetée sur une face ; tige et écrou posés sur la face.
+- Nouveau paramètre `tap_depth` du constructeur ; clic : transformation propre à chaque pièce, toujours dans l'opération transparente (un seul Ctrl+Z).
+
+### dialog.rb
+- `run_generate` passe `length_taraud × unit_factor` à `PlaceTool` ; aide du bouton Place with mouse mise à jour.
+
+### geometry.rb
+- `unit_factor` rendu public (retiré de `private_class_method`).
+
+### Fichiers modifiés
+- `vis_filets_generator/place_tool.rb`
+- `vis_filets_generator/dialog.rb`
+- `vis_filets_generator/geometry.rb`
+- `FSD.md`
