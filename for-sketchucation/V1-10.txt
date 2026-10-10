@@ -34,8 +34,5 @@ NOUVEAU — Place with mouse
 • Esc, clic droit ou autre outil annule le placement : rien n'est créé.
 
 AMÉLIORÉ
-• Les deux boutons ferment le dialogue ; une petite fenêtre « Generating… please wait » s'affiche pendant le calcul 
-
-AMÉLIORÉ
 • Les deux boutons ferment le dialogue ; une petite fenêtre « Generating… please wait » s'affiche pendant le calcul (sans prendre le focus). Le dialogue se rouvre avec vos paramètres si la génération échoue.
 • Une génération = une seule étape d'annulation : un seul Ctrl+Z supprime tout.

@@ -573,3 +573,7 @@ Testé et validé dans SketchUp 2017.
 - `.gitignore` : ajout de `TEST_LOG.md` (résultats de tests locaux).
 - `tools/preview_dialog.rb` : ajouté au dépôt (aperçu du dialogue dans un navigateur, sans SketchUp) ; retrait de l'appel à `onGenerateDone` supprimé du dialogue.
 - `for-sketchucation/V1-10.txt` : ajouté au dépôt (texte de mise à jour SketchUcation v1.10.0, EN + FR).
+
+## Session du 2026-10-10
+
+- `for-sketchucation/V1-10.txt` : suppression du bloc « AMÉLIORÉ » tronqué en double (erreur de copier-coller) dans les notes FR.
