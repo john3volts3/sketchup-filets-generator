@@ -5,6 +5,9 @@ Thumbs.db
 
 # SketchUcation / GitHub media (videos too large for git)
 pictures-Sketchucation-github/
+for-sketchucation/*.mp4
+for-sketchucation/*.png
+for-sketchucation/*.skp
 
 # Local test campaign results
 TEST_LOG.md

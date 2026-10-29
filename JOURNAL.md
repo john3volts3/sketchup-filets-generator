@@ -632,3 +632,10 @@ Demande : remplacer la boîte orange de « Place with mouse » par un cylindre (
 - `MANUEL.md`
 - `PRD.md`
 - `JOURNAL.md`
+
+### .gitignore (2026-10-29)
+- Ajout de `for-sketchucation/*.mp4`, `for-sketchucation/*.png`, `for-sketchucation/*.skp` : médias de démonstration SketchUcation (`Demo-2.mp4` de 142 Mo > limite GitHub de 100 Mo). `for-sketchucation/V1-10.txt` reste suivi.
+
+### Fichiers modifiés
+- `.gitignore`
+- `JOURNAL.md`
