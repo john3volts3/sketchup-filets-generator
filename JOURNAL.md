@@ -577,3 +577,42 @@ Testé et validé dans SketchUp 2017.
 ## Session du 2026-10-10
 
 - `for-sketchucation/V1-10.txt` : suppression du bloc « AMÉLIORÉ » tronqué en double (erreur de copier-coller) dans les notes FR.
+
+---
+
+## Session du 2026-10-29 — Aperçu de placement cylindrique
+
+Demande : remplacer la boîte orange de « Place with mouse » par un cylindre (pièces rondes), avec l'axe en pointillés.
+
+### place_tool.rb
+- Les 8 coins de bounding box (`@corners`, `BOX_EDGES`, `boxes_points`) sont remplacés par un cylindre englobant par pièce (`@cylinders`, `bounding_cylinder`) : centres bas/haut de la boîte, rayon = plus grande demi-largeur de la boîte (écrou : cercle passant par les sommets de l'hexagone ; carré du taraud inscrit dans son corps).
+- `draw` : cercles bas et haut (`GL_LINE_LOOP`, 24 segments, `SEGMENTS`), 2 lignes de contour tangentes aux rayons de vue (`silhouette_lines`, recalculées selon la caméra, perspective ou parallèle ; aucune si l'œil est dans le cylindre), axe en pointillés (`line_stipple '-'`) dépassant de r/2 à chaque bout (`axis_line`).
+- `getExtents` inclut les cercles et l'axe.
+- Inchangés : repère de placement, enfoncement du taraud, clic, annulation.
+
+### dialog.rb
+- Aide du bouton Place with mouse : « orange box » → « orange cylinder ».
+
+### Documentation
+- `FSD.md`, `README.md` (EN + FR), `MANUEL.md` (EN + FR) : boîte orange → cylindre orange avec axe en pointillés.
+
+### Fichiers modifiés
+- `vis_filets_generator/place_tool.rb`
+- `vis_filets_generator/dialog.rb`
+- `FSD.md`
+- `README.md`
+- `MANUEL.md`
+- `JOURNAL.md`
+
+### Livraison v1.10.1 (2026-10-29)
+- Version `1.10.0` → `1.10.1` (`vis_filets_generator.rb`, `FSD.md`, `MANUEL.md` EN + FR).
+- `PRD.md` créé : contexte, utilisateurs, objectifs, périmètre, exigences EF-01…EF-14 et NF-01…NF-06 avec statuts, critères d'acceptation, décisions, historique des livraisons v1.0.0 → v1.10.1.
+- `.rbz` reconstruit : `build/vis_filets_generator.rbz` (sans `Thumbs.db`). Les copies versionnées de `build/` restent réservées aux versions publiées.
+
+### Fichiers modifiés
+- `vis_filets_generator.rb`
+- `FSD.md`
+- `MANUEL.md`
+- `PRD.md` (nouveau)
+- `build/vis_filets_generator.rbz`
+- `JOURNAL.md`

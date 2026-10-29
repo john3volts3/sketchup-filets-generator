@@ -1,4 +1,4 @@
-# User Manual — vis_filets_generator v1.10.0
+# User Manual — vis_filets_generator v1.10.1
 
 ▶️ **[Video demo on YouTube](https://youtu.be/WcOK8VdVc-E)**
 
@@ -156,7 +156,7 @@ The tap is designed to be **subtracted from any solid** to create a threaded hol
 Both buttons close the dialog and show a small *Generating… please wait* window while SketchUp works (it does not take the focus). If the generation fails, the error is shown and the dialog reopens with your settings.
 
 - **Generate**: all parts are created at the **origin** (0, 0, 0), selected and zoomed.
-- **Place with mouse**: an orange box per part follows the mouse (SketchUp inference on points, edges and faces). Click to place the parts.
+- **Place with mouse**: an orange cylinder per part, with its dashed axis, follows the mouse (SketchUp inference on points, edges and faces). Click to place the parts.
   - **On a face** (also inside a group or component), the parts are turned **perpendicular to the face**: the threaded rod and the nut stand on it, the **tap is sunk into it by its threaded length** — the square drive stays outside, ready for the subtraction.
   - Off a face, the parts stay vertical.
   - **Esc**, right-click or choosing another tool **cancels**: the parts are removed, as if you had not clicked.
@@ -243,7 +243,7 @@ The tap is a **single watertight solid** ready for boolean subtraction.
 
 ---
 
-# Manuel utilisateur — vis_filets_generator v1.10.0
+# Manuel utilisateur — vis_filets_generator v1.10.1
 
 ▶️ **[Vidéo de démonstration sur YouTube](https://youtu.be/WcOK8VdVc-E)**
 
@@ -401,7 +401,7 @@ Le taraud est conçu pour être **soustrait de n'importe quel solide** afin de c
 Les deux boutons ferment le dialogue et affichent une petite fenêtre *Generating… please wait* pendant le calcul (elle ne prend pas le focus). En cas d'échec, l'erreur est affichée et le dialogue se rouvre avec vos paramètres.
 
 - **Generate** : toutes les pièces sont créées à l'**origine** (0, 0, 0), sélectionnées et zoomées.
-- **Place with mouse** : une boîte orange par pièce suit la souris (inférence SketchUp sur points, arêtes et faces). Cliquer pour placer les pièces.
+- **Place with mouse** : un cylindre orange par pièce, avec son axe en pointillés, suit la souris (inférence SketchUp sur points, arêtes et faces). Cliquer pour placer les pièces.
   - **Sur une face** (y compris dans un groupe ou composant), les pièces sont orientées **perpendiculairement à la face** : la tige et l'écrou sont posés dessus, le **taraud est enfoncé de sa longueur filetée** — le carré d'entraînement reste dehors, prêt pour la soustraction.
   - Hors d'une face, les pièces restent verticales.
   - **Esc**, clic droit ou choix d'un autre outil **annule** : les pièces sont supprimées, comme si vous n'aviez pas cliqué.

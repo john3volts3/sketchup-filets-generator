@@ -1,7 +1,8 @@
 # vis_filets_generator/place_tool.rb
 # Placement of the freshly generated parts (created at the model origin).
 #
-# PlaceTool: an orange box per part follows the mouse (SketchUp inference on
+# PlaceTool: an orange cylinder per part (bottom and top circles, outline seen
+# from the camera, dashed axis) follows the mouse (SketchUp inference on
 # points, edges and faces); a click moves the parts there in one undo step.
 # On a face, the parts are turned perpendicular to it (Z axis = face normal):
 # rod and nut stand on the face, the tap is sunk into it by its threaded
@@ -42,8 +43,8 @@ module VisFiletsGenerator
       @tap_depth = tap_depth.to_f
       @ip        = Sketchup::InputPoint.new
       @done      = false
-      # Box corners of each part, in the generation frame (origin, world axes)
-      @corners = @groups.map { |g| (0..7).map { |i| g.bounds.corner(i) } }
+      # Bounding cylinder of each part, in the generation frame (origin, world axes)
+      @cylinders = @groups.map { |g| bounding_cylinder(g.bounds) }
     end
 
     def activate
@@ -98,23 +99,35 @@ module VisFiletsGenerator
       @ip.draw(view) if @ip.display?
       return unless @ip.valid?
       view.drawing_color = 'orange'
-      view.line_width    = 2
-      boxes_points.each do |pts|
-        view.draw(GL_LINES, BOX_EDGES.flatten.map { |i| pts[i] })
+      placed_cylinders.each do |cyl|
+        view.line_width   = 2
+        view.line_stipple = ''
+        cyl[:rings].each { |pts| view.draw(GL_LINE_LOOP, pts) }
+        outline = silhouette_lines(view, cyl)
+        view.draw(GL_LINES, outline) unless outline.empty?
+        axis = axis_line(cyl)
+        next if axis.empty?
+        view.line_width   = 1
+        view.line_stipple = '-'
+        view.draw(GL_LINES, axis)
       end
+      view.line_stipple = ''
     end
 
     def getExtents
       bb = Sketchup.active_model.bounds
-      boxes_points.each { |pts| pts.each { |p| bb.add(p) } } if @ip.valid?
+      if @ip.valid?
+        placed_cylinders.each do |cyl|
+          (cyl[:rings].flatten + axis_line(cyl)).each { |p| bb.add(p) }
+        end
+      end
       bb
     end
 
     private
 
-    # Corner index pairs of the 12 box edges (BoundingBox#corner numbering)
-    BOX_EDGES = [[0, 1], [1, 3], [3, 2], [2, 0], [4, 5], [5, 7], [7, 6], [6, 4],
-                 [0, 4], [1, 5], [2, 6], [3, 7]].freeze
+    # Number of segments of the preview circles
+    SEGMENTS = 24
 
     # Placement frame at the input point: Z = normal of the face under the
     # mouse (also inside groups/components), X = model red axis projected on
@@ -149,9 +162,70 @@ module VisFiletsGenerator
       end
     end
 
-    def boxes_points
+    # Bounding cylinder of a part built along the Z axis: centers of the bottom
+    # and top of its box, radius = half of the box widest side (hex nut: circle
+    # through its corners; the tap square is inscribed in its shank).
+    def bounding_cylinder(bb)
+      c   = bb.center
+      r   = [bb.width, bb.height].max / 2.0
+      bot = Geom::Point3d.new(c.x, c.y, bb.min.z)
+      top = Geom::Point3d.new(c.x, c.y, bb.max.z)
+      { bot: bot, top: top, r: r, rings: [ring_points(bot, r), ring_points(top, r)] }
+    end
+
+    # Circle of radius r around a vertical axis, in the generation frame
+    def ring_points(center, r)
+      (0...SEGMENTS).map do |k|
+        a = 2.0 * Math::PI * k / SEGMENTS
+        Geom::Point3d.new(center.x + r * Math.cos(a), center.y + r * Math.sin(a), center.z)
+      end
+    end
+
+    # Bounding cylinders moved by the transformation of each part (rigid: the
+    # radius is kept)
+    def placed_cylinders
       trans = part_transformations
-      @corners.each_with_index.map { |pts, i| pts.map { |p| p.transform(trans[i]) } }
+      @cylinders.each_with_index.map do |cyl, i|
+        t = trans[i]
+        { bot: cyl[:bot].transform(t), top: cyl[:top].transform(t), r: cyl[:r],
+          rings: cyl[:rings].map { |pts| pts.map { |p| p.transform(t) } } }
+      end
+    end
+
+    # Outline of the cylinder seen from the camera: the 2 generatrices tangent
+    # to the view rays. Empty when the eye is inside the cylinder.
+    def silhouette_lines(view, cyl)
+      bot, top, r = cyl[:bot], cyl[:top], cyl[:r]
+      axis = top - bot
+      return [] unless axis.valid?
+      axis.normalize!
+      cam    = view.camera
+      to_eye = cam.perspective? ? cam.eye - bot : cam.direction.reverse
+      # Component of the eye direction perpendicular to the axis
+      u = Geom::Vector3d.linear_combination(1.0, to_eye, -to_eye.dot(axis), axis)
+      return [] unless u.valid?
+      if cam.perspective?
+        dist = u.length.to_f
+        return [] if dist <= r
+        cos_a = r / dist   # tangent point seen from the eye
+      else
+        cos_a = 0.0        # parallel rays: tangent at 90 degrees
+      end
+      sin_a = Math.sqrt(1.0 - cos_a * cos_a)
+      u.normalize!
+      w = axis * u
+      [1.0, -1.0].flat_map do |s|
+        off = Geom::Vector3d.linear_combination(r * cos_a, u, s * r * sin_a, w)
+        [bot.offset(off), top.offset(off)]
+      end
+    end
+
+    # Axis of the cylinder, overhanging both ends by half the radius
+    def axis_line(cyl)
+      axis = cyl[:top] - cyl[:bot]
+      return [] unless axis.valid?
+      ext = cyl[:r] / 2.0
+      [cyl[:bot].offset(axis.reverse, ext), cyl[:top].offset(axis, ext)]
     end
 
     # Removes the generated parts by undoing the generation (one single undo

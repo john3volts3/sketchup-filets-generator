@@ -1,8 +1,8 @@
 # Spécifications fonctionnelles détaillées (FSD)
 
 **Projet** : Plugin SketchUp `vis_filets_generator` — Générateur de filets paramétriques
-**Version** : 1.10.0
-**Date** : 2026-10-09
+**Version** : 1.10.1
+**Date** : 2026-10-29
 
 ---
 
@@ -38,7 +38,7 @@ Toutes les valeurs dimensionnelles sont dans l'**unité courante du modèle Sket
 | Bouton | Comportement |
 |--------|--------------|
 | **Generate** | Génère les pièces à l'origine du modèle ; elles sont sélectionnées et la vue zoome dessus. |
-| **Place with mouse** | Génère les pièces à l'origine puis active `PlaceTool` : une boîte orange (bounding box des pièces) suit la souris avec l'inférence SketchUp ; un clic déplace les pièces à ce point. **Sur une face** (y compris dans un groupe/composant), les pièces sont orientées perpendiculairement à la face (axe Z = normale de la face, axe X = axe rouge projeté sur la face) : tige et écrou posés sur la face, **taraud enfoncé** de sa longueur filetée L (pointe à L sous la surface, carré à l'extérieur — à soustraire pour obtenir un trou taraudé). Une boîte orange par pièce. Hors d'une face : orientation verticale, sans enfoncement. Esc (dans le modèle ou le dialogue), clic droit ou changement d'outil : **annulation** — la génération est défaite (`Sketchup.undo`), aucune pièce ne reste, comme si le bouton n'avait pas été cliqué. |
+| **Place with mouse** | Génère les pièces à l'origine puis active `PlaceTool` : un cylindre orange (cylindre englobant de chaque pièce : cercles bas et haut à 24 segments, 2 lignes de contour recalculées selon la caméra — perspective ou parallèle —, axe en pointillés dépassant de r/2 à chaque bout ; rayon = plus grande demi-largeur de sa bounding box, soit le cercle passant par les sommets de l'écrou) suit la souris avec l'inférence SketchUp ; un clic déplace les pièces à ce point. **Sur une face** (y compris dans un groupe/composant), les pièces sont orientées perpendiculairement à la face (axe Z = normale de la face, axe X = axe rouge projeté sur la face) : tige et écrou posés sur la face, **taraud enfoncé** de sa longueur filetée L (pointe à L sous la surface, carré à l'extérieur — à soustraire pour obtenir un trou taraudé). Un cylindre orange par pièce. Hors d'une face : orientation verticale, sans enfoncement. Esc (dans le modèle ou le dialogue), clic droit ou changement d'outil : **annulation** — la génération est défaite (`Sketchup.undo`), aucune pièce ne reste, comme si le bouton n'avait pas été cliqué. |
 | **Close** | Ferme le dialogue. |
 
 **Annulation (Ctrl+Z)** : toute la génération (pièces, booléens, chanfreins, retour de l'écrou) est une **seule opération** `Thread Generator` ; le clic de placement y est chaîné (opération transparente). Un seul Ctrl+Z supprime donc tout.

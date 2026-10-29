@@ -51,7 +51,7 @@ Menu **Extensions → Vis & Filets → Generate…**
 Both buttons close the dialog, show a small *Generating… please wait* window, then create the parts (the dialog reopens if the generation fails).
 
 - **Generate** — parts are created at the origin, selected and zoomed.
-- **Place with mouse** — an orange box per part follows the mouse. **On a face, the parts turn perpendicular to it**: rod and nut stand on the face, the **tap is sunk into it by its threaded length** (subtract it to get a threaded hole). Click to place. **Esc**, right-click or another tool cancels: nothing is created.
+- **Place with mouse** — an orange cylinder per part (with its dashed axis) follows the mouse. **On a face, the parts turn perpendicular to it**: rod and nut stand on the face, the **tap is sunk into it by its threaded length** (subtract it to get a threaded hole). Click to place. **Esc**, right-click or another tool cancels: nothing is created.
 - A whole generation (placement included) is **one undo step**: a single Ctrl+Z removes it.
 
 ## Thread profiles
@@ -193,7 +193,7 @@ Menu **Extensions → Vis & Filets → Generate…**
 Les deux boutons ferment le dialogue, affichent une petite fenêtre *Generating… please wait*, puis créent les pièces (le dialogue se rouvre si la génération échoue).
 
 - **Generate** — pièces créées à l'origine, sélectionnées et zoomées.
-- **Place with mouse** — une boîte orange par pièce suit la souris. **Sur une face, les pièces se placent perpendiculairement à celle-ci** : tige et écrou posés sur la face, **taraud enfoncé de sa longueur filetée** (à soustraire pour obtenir un trou taraudé). Clic pour placer. **Esc**, clic droit ou autre outil : annulation, rien n'est créé.
+- **Place with mouse** — un cylindre orange par pièce (avec son axe en pointillés) suit la souris. **Sur une face, les pièces se placent perpendiculairement à celle-ci** : tige et écrou posés sur la face, **taraud enfoncé de sa longueur filetée** (à soustraire pour obtenir un trou taraudé). Clic pour placer. **Esc**, clic droit ou autre outil : annulation, rien n'est créé.
 - Une génération complète (placement compris) est **une seule étape d'annulation** : un seul Ctrl+Z la supprime.
 
 ## Profils de filet
