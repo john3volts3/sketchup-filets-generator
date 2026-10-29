@@ -1,12 +1,12 @@
-Version : 1.10.0
+Version : 1.10.1
 
 Release notes (EN) :
 
-v1.10.0 — Place with mouse, perpendicular to faces
+v1.10.1 — Place with mouse, perpendicular to faces
 
 NEW — Place with mouse
 • New "Place with mouse" button next to "Generate".
-• An orange box per part follows the mouse with SketchUp inference — click to place the parts.
+• An orange cylinder per part, with its dashed axis, follows the mouse with SketchUp inference — click to place the parts.
 • On a face, the parts turn perpendicular to it (also on faces inside groups and components):
   – threaded rod and hex nut stand on the face,
   – the tap is sunk into the face by its threaded length, square drive outside: just subtract it to get a threaded hole.
@@ -18,15 +18,15 @@ IMPROVED
 • One generation = one undo step: a single Ctrl+Z removes everything (booleans, chamfers and placement included).
 
 Compatible SketchUp 2017 and later. Boolean operations (nut, tap, chamfer) require SketchUp Pro or the free Eneroth Solid Tools.
-Demo: https://youtu.be/WcOK8VdVc-E
+Demo: https://youtu.be/W_STZOZcUOQ
 
 Notes de version (FR, optionnel) :
 
-v1.10.0 — Placement à la souris, perpendiculaire aux faces
+v1.10.1 — Placement à la souris, perpendiculaire aux faces
 
 NOUVEAU — Place with mouse
 • Nouveau bouton « Place with mouse » à côté de « Generate ».
-• Une boîte orange par pièce suit la souris avec l'inférence SketchUp — un clic place les pièces.
+• Un cylindre orange par pièce, avec son axe en pointillés, suit la souris avec l'inférence SketchUp — un clic place les pièces.
 • Sur une face, les pièces se placent perpendiculairement à celle-ci (y compris dans les groupes et composants) :
   – tige filetée et écrou posés sur la face,
   – le taraud est enfoncé de sa longueur filetée, carré d'entraînement dehors : il suffit de le soustraire pour obtenir un trou taraudé.

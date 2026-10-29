@@ -616,3 +616,19 @@ Demande : remplacer la boîte orange de « Place with mouse » par un cylindre (
 - `PRD.md` (nouveau)
 - `build/vis_filets_generator.rbz`
 - `JOURNAL.md`
+
+### Publication v1.10.1 (2026-10-29)
+- Release GitHub **v1.10.1** (tag sur `a607a36`, asset `vis_filets_generator_v1.10.1.rbz`, notes EN + FR avec la nouvelle vidéo) : https://github.com/john3volts3/sketchup-filets-generator/releases/tag/v1.10.1
+- `build/vis_filets_generator_v1.10.1.rbz` : copie versionnée de la version publiée.
+- SketchUcation (plugin `thread_generator_dro`, de la v1.9.2 à la v1.10.1) : version, lien YouTube, notes de version (v1.10.1 ajoutée au-dessus de la v1.9.2), Overview / Start / Documentation (Place with mouse, `.rbz` v1.10.1), RBZ remplacé, image d'article `Screenshot.png` remplacée par `demo-2.png` réduite à 690 px de large (limite du site). Plugin **en attente de validation par les modérateurs** (dépublié automatiquement par le remplacement du RBZ).
+- Nouvelle vidéo de démonstration https://youtu.be/W_STZOZcUOQ : `README.md` (EN + FR), `MANUEL.md` (EN + FR), `for-sketchucation/V1-10.txt`.
+- `for-sketchucation/V1-10.txt` : texte de mise à jour SketchUcation passé en v1.10.1 (cylindre orange avec axe en pointillés, nouvelle vidéo).
+- `PRD.md` : contraintes de diffusion SketchUcation, question ouverte et historique mis à jour.
+
+### Fichiers modifiés
+- `for-sketchucation/V1-10.txt`
+- `build/vis_filets_generator_v1.10.1.rbz` (nouveau)
+- `README.md`
+- `MANUEL.md`
+- `PRD.md`
+- `JOURNAL.md`

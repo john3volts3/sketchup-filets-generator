@@ -9,7 +9,7 @@ Parametric generator for **threaded rods**, **hex nuts** and **taps** in SketchU
 
 ## Demo
 
-▶️ **[Watch on YouTube](https://youtu.be/WcOK8VdVc-E)**
+▶️ **[Watch on YouTube](https://youtu.be/W_STZOZcUOQ)**
 
 ---
 
@@ -151,7 +151,7 @@ Générateur paramétrique de **tiges filetées**, **écrous hexagonaux** et **t
 
 ## Démo
 
-▶️ **[Voir sur YouTube](https://youtu.be/WcOK8VdVc-E)**
+▶️ **[Voir sur YouTube](https://youtu.be/W_STZOZcUOQ)**
 
 ---
 

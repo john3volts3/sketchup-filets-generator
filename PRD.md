@@ -67,7 +67,7 @@ Les plugins de filetage existants pour SketchUp obligent à dessiner le profil �
 
 - API Ruby SketchUp ; booléens disponibles seulement avec SketchUp Pro ou l'extension gratuite Eneroth Solid Tools.
 - Tolérance interne de SketchUp (~0,001″) : impose le scale-trick pour les petits pas.
-- Diffusion : dépôt GitHub (releases avec `.rbz`) et SketchUcation (publication manuelle par l'auteur).
+- Diffusion : dépôt GitHub (releases avec `.rbz`) et SketchUcation (plugin `thread_generator_dro`, mis à jour par l'auteur ; chaque nouveau `.rbz` dépublie le plugin jusqu'à sa revalidation par les modérateurs ; images d'article limitées à 690 px de large).
 
 ## 8. Critères d'acceptation
 
@@ -95,7 +95,7 @@ Les plugins de filetage existants pour SketchUp obligent à dessiner le profil �
 **Questions ouvertes**
 - Filet à gauche, tête de vis DIN 933 : à prévoir ?
 - Profil FDM : valeurs par défaut à valider selon les matériaux et imprimantes.
-- Publication de la v1.10.x sur SketchUcation (manuelle).
+- v1.10.1 envoyée sur SketchUcation le 2026-10-29 : en attente de validation par les modérateurs.
 
 ## 10. Historique des livraisons
 
@@ -115,4 +115,4 @@ Les plugins de filetage existants pour SketchUp obligent à dessiner le profil �
 | 2026-05-04 | v1.9.1 (`9ef8f07`) | EF-10 (barre d'état) |
 | 2026-05-05 | v1.9.2 (`f4609b2`) | NF-02 (Ruby 2.2), NF-04 — première publication SketchUcation |
 | 2026-10-09 | v1.10.0 (`59fe5a8`) | EF-10 (fenêtre, curseur), EF-11, EF-12, EF-13, NF-06 — release GitHub |
-| 2026-10-29 | v1.10.1 | EF-14 |
+| 2026-10-29 | v1.10.1 (`a607a36`) | EF-14 — release GitHub ; SketchUcation mise à jour depuis la v1.9.2 (en attente de validation) ; nouvelle vidéo de démonstration |
